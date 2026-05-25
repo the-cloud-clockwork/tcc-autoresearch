@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   update-badges:
-    runs-on: ubuntu-latest
+    runs-on: anton
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout
@@ -108,7 +108,7 @@ jobs:
 
   deploy-pages:
     needs: update-badges
-    runs-on: ubuntu-latest
+    runs-on: anton
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
