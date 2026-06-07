@@ -6,9 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: anton
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'anton' }}
     steps:
       - uses: actions/checkout@v4
 
