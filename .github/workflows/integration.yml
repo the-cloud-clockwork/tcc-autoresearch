@@ -17,7 +17,7 @@ on:
 jobs:
   integration-lite:
     name: "Integration (no Docker)"
-    runs-on: anton
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
 
   integration-stub:
     name: "Integration (stub Claude)"
-    runs-on: anton
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
   integration-e2e:
     name: "Integration (real Claude)"
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_e2e == true }}
-    runs-on: anton
+    runs-on: ubuntu-latest
     env:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     steps:

@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'anton' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
