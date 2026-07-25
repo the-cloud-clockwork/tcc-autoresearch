@@ -62,7 +62,7 @@ The core. The edit→test→measure→keep/discard loop with git worktree isolat
   - HIGH: worktree leak on unhandled exception → `try/finally` around main loop
   - HIGH: `status_override` set as string instead of enum → `MarkerStatus.NEEDS_HUMAN` directly
   - HIGH: silent `GitError` swallow on reset → `logger.warning`
-  - MEDIUM: hardcoded 5m rework budget → uses `marker.loop.budget_per_experiment`
+  - MEDIUM: hardcoded 5m rework budget → uses `marker.agent.budget_per_experiment`
   - MEDIUM: bare `subprocess.run` in `git_commit` → uses `_run_git` for consistent error handling
   - MEDIUM: inline `datetime` import → moved to module top
   - MEDIUM: temp dir leak on worktree creation failure → cleanup in except block
@@ -161,3 +161,70 @@ The runtime. Long-running daemon for scheduled execution, plus pip-installable p
 - `threading.Thread` + `Semaphore(max_concurrent)` for concurrent runs
 - `parse_duration()` extracted to shared `utils.py` (reused by engine + daemon)
 - State reloaded from disk each tick (CLI changes picked up automatically)
+
+---
+
+## Block 5: Agent Profiles + Telemetry ▸ `done`
+
+Hard permission enforcement via Claude Code's permission system, telemetry capture for feedback loops, and full agent project structure.
+
+**Scope:**
+- [x] `AgentConfig` model on `Marker` (name, model, effort, permission_mode, allowed/disallowed tools, extra_flags)
+- [x] `agent_profile.py` — generate `settings.json` + `CLAUDE.md` per marker at runtime
+- [x] `telemetry.py` — parse `--output-format stream-json` into `TelemetryReport` (tokens, cost, tools, errors)
+- [x] `ClaudeCodeRunner` rewrite — `--permission-mode bypassPermissions`, `--settings`, `--append-system-prompt-file`, `--allowedTools`/`--disallowedTools`
+- [x] Default agent as full Claude Code project: `.claude/` with settings, rules, commands, agents, skills
+- [x] `.env.example` + `.env` loading before agent subprocess
+- [x] `--append-system-prompt-file` for default CLAUDE.md injection into all agent runs
+- [x] `autoresearch init` — scaffold `.autoresearch/` with template config + default agent (additive, non-destructive)
+- [x] `init_autoresearch_dir()` resolves via `__file__` for both dev and pip installs
+- [x] Error feedback: telemetry errors/denials written to ideas.md
+- [x] Tests for agent_profile, telemetry modules
+
+**Completed:** 2026-03-31 — 281 tests across 17 files
+**Outputs:** `agent_profile.py`, `telemetry.py`, `src/autoresearch/agents/default/` (full project structure)
+**Depends on:** Block 1 (marker schema), Block 2 (engine ABC), Block 4 (daemon caller)
+**SPECS reference:** Section 4.13 (agent invocation — now designed and implemented)
+
+**Design decisions:**
+- `--permission-mode bypassPermissions` instead of `--dangerously-skip-permissions` (proper permission system)
+- `settings.json` generated at runtime from marker's mutable/immutable lists → `permissions.allow`/`deny`
+- Default agent dir at `src/autoresearch/agents/default/` — resolves via `Path(__file__).parent` for pip compatibility
+- Stream-json telemetry parsed into `TelemetryReport` dataclass with 12 fields
+- `.env` loaded via `dotenv` before subprocess, not passed as CLI flags (secrets stay out of process list)
+- `--append-system-prompt-file` injects default CLAUDE.md into all agents (base rules, identity, error recovery)
+
+---
+
+## Block 6: Documentation + Onboarding Skill ▸ `done`
+
+Documentation scaffold and `/onboard` skill for frictionless repo setup.
+
+**Scope:**
+- [x] `docs/` directory with 15 files + `00-INDEX.md` covering architecture, core domain, CLI, agents, config, development
+- [x] README: Quick Start onboarding guide (install → init → configure → run)
+- [x] README + docs: Claude Code documented as hard dependency (orchestrator/agent relationship)
+- [x] `.claude/skills/onboard/` — interactive Q&A skill to set up autoresearch on any repo
+- [x] Common metric templates (pytest, jest, go, rust, coverage, build time, lint)
+
+**Completed:** 2026-04-01
+**Outputs:** `docs/`, `.claude/skills/onboard/`, updated `README.md`
+**Depends on:** Blocks 1–5 (documents existing implementation)
+
+### Sweep — 2026-04-01
+- **Issues found:** 13 (quality: 13, compliance: 4, integration: 1 — deduplicated)
+- **Fixed:** 13
+  - HIGH: `docs/2A-CLI.md` listed wrong commands (`track`/`untrack`/`set-status`) → corrected to actual CLI commands (`add`/`detach`/`skip`/`pause` + 8 missing commands)
+  - HIGH: `docs/4B-TELEMETRY.md` fabricated TSV columns → corrected to actual schema (commit, metric, guard, status, confidence, description)
+  - HIGH: `docs/0B-QUICKSTART.md` used legacy `.autoresearch.yaml` path → corrected to `.autoresearch/config.yaml`
+  - HIGH: `docs/0A-ARCHITECTURE.md` diagram attributed commit/discard to agent → corrected to orchestrator
+  - HIGH: `docs/1A-MARKER.md` claimed CWD-upward search → corrected (no upward traversal)
+  - HIGH: `01_validate_repo.sh` `.git` directory check failed on worktrees → use `git rev-parse`
+  - MEDIUM: `docs/1D-STATE.md` referenced `track`/`untrack` → corrected to `add`/`detach`
+  - MEDIUM: `docs/1B-ENGINE.md` mislabeled idea/program steps → corrected to actual flow
+  - MEDIUM: `docs/5A-TESTING.md` claimed "mock git repos" in fixtures → corrected to actual files
+  - MEDIUM: `docs/3A-AGENTS.md` described copilot as fully implemented → marked as planned
+  - MEDIUM: `operator/SPECS.md` section 1.1 still said `.autoresearch.yaml` at root → updated to canonical `.autoresearch/config.yaml`
+  - LOW: `docs/0B-QUICKSTART.md` marker `-m` didn't show full ID format → added `repo:marker` format
+  - LOW: BLOCKS.md not updated with session work → added Block 6
+- **Remaining:** 0

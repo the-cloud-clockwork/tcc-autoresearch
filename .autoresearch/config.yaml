@@ -14,17 +14,28 @@ markers:
         - src/autoresearch/cli.py
     metric:
       command: "python3 -m pytest --tb=no -q 2>&1 | tail -1"
-      extract: '(\d+) passed'
+      extract: "grep -oP '\\d+(?= passed)'"
       direction: higher
-      baseline: 251
+      baseline: 2541
     guard:
       command: "python3 -m pytest --tb=short -q 2>&1"
-      extract: '(\d+) passed'
-      threshold: 251
+      extract: "grep -oP '\\d+(?= passed)'"
+      threshold: 2541
       rework_attempts: 2
-    loop:
+    agent:
+      name: copilot
       model: sonnet
-      budget_per_experiment: 5m
+      effort: medium
+      budget_per_experiment: 25m
       max_experiments: 10
+      permission_mode: bypassPermissions
+      allowed_tools:
+        - "Edit(tests/*)"
+        - "Bash(python3 *)"
+        - "Bash(pytest *)"
+      disallowed_tools:
+        - "Bash(rm *)"
+        - "Bash(git push *)"
+        - "Bash(curl *)"
     schedule:
       type: on-demand

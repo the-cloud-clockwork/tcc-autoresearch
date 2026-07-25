@@ -42,7 +42,6 @@ coverage.xml
 .DS_Store
 
 # Project runtime
-.autoresearch/
 *.pid
 
 # Jupyter
@@ -54,3 +53,6 @@ coverage.xml
 
 .claude/settings.local.json
 scheduled_tasks.lock
+.claude/CLAUDE.local.md
+local.*
+CLAUDE.local.md

@@ -5,10 +5,11 @@
 
 ---
 
-## 1. Marker File (`.autoresearch.yaml`)
+## 1. Marker File
 
 ### 1.1 Location
-- Lives in the ROOT of the target repository
+- **Canonical path:** `.autoresearch/config.yaml` (inside the `.autoresearch/` directory)
+- **Legacy fallback:** `.autoresearch.yaml` at repo root (still supported, checked second)
 - One file per repo
 - Multiple marker blocks inside a single file
 
@@ -41,7 +42,7 @@ markers:
       threshold: number | null      # Minimum acceptable value (below = guard fails)
       rework_attempts: integer      # Attempts to fix before discarding (default: 2)
 
-    loop:
+    agent:
       model: string                 # LLM model (e.g. "sonnet", "opus", "haiku")
       budget_per_experiment: string  # Time limit per experiment (e.g. "10m", "5m")
       max_experiments: integer      # Hard cap on total experiments

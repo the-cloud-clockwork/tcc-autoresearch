@@ -1,4 +1,4 @@
-"""Marker schema and .autoresearch.yaml parser."""
+"""Marker schema and .autoresearch/config.yaml parser."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from pydantic import BaseModel
 
 
 MARKER_FILENAME = ".autoresearch.yaml"
+CONFIG_DIR = ".autoresearch"
+CONFIG_FILENAME = "config.yaml"
 
 
 class MarkerStatus(str, Enum):
@@ -35,6 +37,7 @@ class Metric(BaseModel):
     direction: MetricDirection
     baseline: float
     target: float | None = None
+    issues_command: str | None = None
 
 
 class Guard(BaseModel):
@@ -43,12 +46,6 @@ class Guard(BaseModel):
     threshold: float | None = None
     rework_attempts: int = 2
 
-
-class LoopConfig(BaseModel):
-    model: str = "sonnet"
-    budget_per_experiment: str = "10m"
-    max_experiments: int = 50
-    max_cost: str | None = None
 
 
 class Escalation(BaseModel):
@@ -70,6 +67,34 @@ class ResultsConfig(BaseModel):
     auto_merge: bool = False
 
 
+class AutoMerge(BaseModel):
+    enabled: bool = False
+    target_branch: str = "dev"
+    gates: list[str] = ["security", "tests", "confidence"]
+    security_command: str | None = None
+    test_command: str | None = None
+    min_confidence: float = 1.0
+    push_to_remote: bool = False
+    create_pr: bool = False
+    snapshot_command: str | None = None
+    restore_command: str | None = None
+    notify: list[str] = []
+
+
+class AgentConfig(BaseModel):
+    name: str = "default"
+    model: str = "sonnet"
+    effort: str = "medium"
+    permission_mode: str = "bypassPermissions"
+    budget_per_experiment: str = "10m"
+    max_experiments: int = 50
+    max_cost: str | None = None
+    env_file: str | None = None
+    allowed_tools: list[str] = []
+    disallowed_tools: list[str] = []
+    extra_flags: list[str] = []
+
+
 class Marker(BaseModel):
     name: str
     description: str = ""
@@ -77,10 +102,12 @@ class Marker(BaseModel):
     target: Target
     metric: Metric
     guard: Guard = Guard()
-    loop: LoopConfig
     escalation: Escalation = Escalation()
     schedule: Schedule = Schedule()
     results: ResultsConfig = ResultsConfig()
+    agent: AgentConfig = AgentConfig()
+    auto_merge: AutoMerge = AutoMerge()
+
 
 
 class MarkerFile(BaseModel):
@@ -88,16 +115,19 @@ class MarkerFile(BaseModel):
 
 
 def load_markers(path: Path) -> MarkerFile:
-    """Read .autoresearch.yaml, validate, return typed MarkerFile."""
+    """Read .autoresearch/config.yaml, validate, return typed MarkerFile."""
     with open(path) as f:
         data = yaml.safe_load(f)
     return MarkerFile.model_validate(data)
 
 
 def find_marker_file(repo_path: Path) -> Path | None:
-    """Search for .autoresearch.yaml in repo root. Return path or None."""
-    candidate = repo_path / MARKER_FILENAME
-    return candidate if candidate.is_file() else None
+    """Search for marker config. Checks .autoresearch/config.yaml first, then .autoresearch.yaml (legacy)."""
+    new_path = repo_path / CONFIG_DIR / CONFIG_FILENAME
+    if new_path.is_file():
+        return new_path
+    legacy_path = repo_path / MARKER_FILENAME
+    return legacy_path if legacy_path.is_file() else None
 
 
 def get_marker(marker_file: MarkerFile, name: str) -> Marker | None:

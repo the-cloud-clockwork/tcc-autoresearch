@@ -39,8 +39,8 @@ class TestLoadMarkers:
         assert m.guard.command is not None
         assert m.guard.threshold == 50
         assert m.escalation.refine_after == 3
-        assert m.loop.model == "sonnet"
-        assert m.loop.max_experiments == 50
+        assert m.agent.model == "sonnet"
+        assert m.agent.max_experiments == 50
 
     def test_valid_marker_second_is_skip(self):
         mf = load_markers(FIXTURES / "valid_marker.yaml")
@@ -101,3 +101,62 @@ class TestResolveMarkerId:
     def test_raises_on_invalid(self):
         with pytest.raises(ValueError):
             resolve_marker_id("no-colon-here")
+
+
+class TestMarkerDefaults:
+    def test_marker_status_default_active(self):
+        from autoresearch.marker import Metric, MetricDirection, Target
+        m = Marker(
+            name="test",
+            target=Target(mutable=["src/foo.py"]),
+            metric=Metric(command="pytest", extract="grep", direction=MetricDirection.HIGHER, baseline=0),
+        )
+        assert m.status == MarkerStatus.ACTIVE
+        assert m.description == ""
+
+    def test_guard_defaults(self):
+        from autoresearch.marker import Guard
+        g = Guard()
+        assert g.command is None
+        assert g.threshold is None
+        assert g.rework_attempts == 2
+
+    def test_escalation_defaults(self):
+        from autoresearch.marker import Escalation
+        e = Escalation()
+        assert e.refine_after == 3
+        assert e.pivot_after == 5
+        assert e.search_after_pivots == 2
+        assert e.halt_after_pivots == 3
+
+    def test_agent_config_defaults(self):
+        from autoresearch.marker import AgentConfig
+        ac = AgentConfig()
+        assert ac.model == "sonnet"
+        assert ac.max_experiments == 50
+        assert ac.budget_per_experiment == "10m"
+        assert ac.effort == "medium"
+        assert ac.permission_mode == "bypassPermissions"
+
+    def test_marker_status_enum_values(self):
+        assert MarkerStatus.ACTIVE == "active"
+        assert MarkerStatus.SKIP == "skip"
+        assert MarkerStatus.PAUSED == "paused"
+        assert MarkerStatus.COMPLETED == "completed"
+
+    def test_find_marker_file_prefers_config_dir(self, tmp_path):
+        from autoresearch.marker import find_marker_file, CONFIG_DIR, CONFIG_FILENAME, MARKER_FILENAME
+        # Create both paths
+        config_dir = tmp_path / CONFIG_DIR
+        config_dir.mkdir()
+        config_file = config_dir / CONFIG_FILENAME
+        config_file.write_text("markers: []")
+        legacy = tmp_path / MARKER_FILENAME
+        legacy.write_text("markers: []")
+        # Should prefer config dir
+        result = find_marker_file(tmp_path)
+        assert result == config_file
+
+    def test_marker_file_get_marker_returns_none_for_missing(self):
+        mf = MarkerFile(markers=[])
+        assert get_marker(mf, "nonexistent") is None
