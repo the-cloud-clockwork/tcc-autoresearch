@@ -1,5 +1,8 @@
 # TODO.md -- Minor Items & Don't Forget
 
+- Release authentication waits for the org shared workflow migration. Verify inherited CI App credentials through the manual CI proof; secret name listings alone do not establish availability.
+- CI currently stops at existing lint errors before the full test suite. The authentication contract runs independently while that baseline is repaired.
+
 > **Purpose:** Small items, notes, and things to not forget. Not major blocks — those go in `BLOCKS.md`. This is the scratchpad for details that would otherwise be lost between sessions.
 
 ---

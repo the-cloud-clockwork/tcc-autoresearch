@@ -1,5 +1,9 @@
 # BLOCKS.md — Active Work Blocks
 
+## CI release authentication — in-progress
+
+The release caller is migrating from a personal token to org CI App credentials. The shared release workflow must accept those credentials before this change can merge. Authentication contract and token minting proofs run without publishing a release.
+
 > **Purpose:** Four modular blocks that build everything end-to-end. Each block is a plan — the operator works on one block at a time, potentially in worktrees or parallel agent dispatches.
 > **Rule:** Update this file every session. Blocks move through: `design` → `ready` → `in-progress` → `done`
 > **Methodology:** Each block becomes its own plan. Agent reads VISION → SPECS → BLOCKS → starts work on the assigned block. Progress saved here after each session.
