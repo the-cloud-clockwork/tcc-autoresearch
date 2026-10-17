@@ -1,5 +1,9 @@
 # BLOCKS.md — Active Work Blocks
 
+## CI lint baseline — in progress
+
+Restore compatibility with the Ruff version installed by CI while preserving application behavior and test assertions. Verify the lint and test steps on pull requests into dev and on dev pushes.
+
 > **Purpose:** Four modular blocks that build everything end-to-end. Each block is a plan — the operator works on one block at a time, potentially in worktrees or parallel agent dispatches.
 > **Rule:** Update this file every session. Blocks move through: `design` → `ready` → `in-progress` → `done`
 > **Methodology:** Each block becomes its own plan. Agent reads VISION → SPECS → BLOCKS → starts work on the assigned block. Progress saved here after each session.

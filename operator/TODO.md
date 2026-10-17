@@ -1,5 +1,7 @@
 # TODO.md -- Minor Items & Don't Forget
 
+- Verify the lint baseline repair in CI and merge it before the release authentication draft refreshes its branch.
+
 > **Purpose:** Small items, notes, and things to not forget. Not major blocks — those go in `BLOCKS.md`. This is the scratchpad for details that would otherwise be lost between sessions.
 
 ---

@@ -36,7 +36,7 @@ from autoresearch.worktree import (
     GitError,
     create_worktree,
     git_commit,
-    git_head_short,  # noqa: F401 — used by test mocks via autoresearch.engine.git_head_short
+    git_head_short,
     git_reset_hard,
     remove_worktree,
 )
@@ -177,7 +177,7 @@ def _load_dotenv_into(env: dict[str, str], path: Path) -> None:
 class ClaudeCodeRunner(AgentRunner):
     """Agent runner using Claude Code CLI with profile-based permissions."""
 
-    def __init__(self, marker: "Marker"):
+    def __init__(self, marker: Marker):
         self.marker = marker
         self.agent_config = marker.agent
 
@@ -187,7 +187,11 @@ class ClaudeCodeRunner(AgentRunner):
         program: str,
         budget: str,
     ) -> AgentResult:
-        from autoresearch.agent_profile import DEFAULT_AGENT_DIR, build_cli_permission_flags, ensure_agent_dir
+        from autoresearch.agent_profile import (
+            DEFAULT_AGENT_DIR,
+            build_cli_permission_flags,
+            ensure_agent_dir,
+        )
         from autoresearch.telemetry import (
             extract_description_from_telemetry,
             parse_stream_json,
@@ -200,7 +204,9 @@ class ClaudeCodeRunner(AgentRunner):
         paths = ensure_agent_dir(worktree_path, self.marker.name, self.marker)
         timeout_seconds = _parse_budget(budget)
 
-        cmd = self._build_cmd(program, worktree_path, paths, DEFAULT_AGENT_DIR, build_cli_permission_flags)
+        cmd = self._build_cmd(
+            program, worktree_path, paths, DEFAULT_AGENT_DIR, build_cli_permission_flags
+        )
         env = self._build_env(paths, timeout_seconds, repo_path=worktree_path)
 
         logger.info(f"Agent cmd: {' '.join(cmd[:6])}...")
@@ -208,6 +214,7 @@ class ClaudeCodeRunner(AgentRunner):
         try:
             result = subprocess.run(
                 cmd,
+                check=False,
                 cwd=str(paths.agent_dir),  # run FROM the agent dir
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
@@ -218,7 +225,9 @@ class ClaudeCodeRunner(AgentRunner):
             )
             output = result.stdout or ""
             if result.returncode != 0:
-                logger.warning(f"Agent exit code {result.returncode}: {(result.stderr or '')[:500]}")
+                logger.warning(
+                    f"Agent exit code {result.returncode}: {(result.stderr or '')[:500]}"
+                )
 
             # Save stream-json log
             if output:
@@ -230,7 +239,9 @@ class ClaudeCodeRunner(AgentRunner):
             save_telemetry_report(telemetry, paths.logs_dir, ts)
 
             # Extract description: prefer telemetry, fall back to heuristic
-            description = extract_description_from_telemetry(telemetry) or _extract_description(output)
+            description = extract_description_from_telemetry(
+                telemetry
+            ) or _extract_description(output)
 
             return AgentResult(
                 success=result.returncode == 0,
@@ -242,7 +253,11 @@ class ClaudeCodeRunner(AgentRunner):
         except subprocess.TimeoutExpired as e:
             partial = ""
             if e.stdout:
-                partial = e.stdout if isinstance(e.stdout, str) else e.stdout.decode(errors="replace")
+                partial = (
+                    e.stdout
+                    if isinstance(e.stdout, str)
+                    else e.stdout.decode(errors="replace")
+                )
             return AgentResult(
                 success=False,
                 description="agent timeout",
@@ -263,13 +278,20 @@ class ClaudeCodeRunner(AgentRunner):
         default_claude_md = default_agent_dir / "CLAUDE.md"
 
         cmd = [
-            "claude", "-p", program,
-            "--model", model,
-            "--permission-mode", self.agent_config.permission_mode,
-            "--add-dir", str(worktree_path),
-            "--output-format", "stream-json",
+            "claude",
+            "-p",
+            program,
+            "--model",
+            model,
+            "--permission-mode",
+            self.agent_config.permission_mode,
+            "--add-dir",
+            str(worktree_path),
+            "--output-format",
+            "stream-json",
             "--verbose",
-            "--debug-file", str(paths.debug_log_path),
+            "--debug-file",
+            str(paths.debug_log_path),
         ]
 
         if default_claude_md.is_file():
@@ -278,7 +300,9 @@ class ClaudeCodeRunner(AgentRunner):
         if self.agent_config.effort:
             cmd.extend(["--effort", self.agent_config.effort])
 
-        allowed_tools, disallowed_tools = build_cli_permission_flags(self.marker, worktree_path)
+        allowed_tools, disallowed_tools = build_cli_permission_flags(
+            self.marker, worktree_path
+        )
         if allowed_tools:
             cmd.extend(["--allowedTools", *allowed_tools])
         if disallowed_tools:
@@ -287,7 +311,9 @@ class ClaudeCodeRunner(AgentRunner):
         cmd.extend(self.agent_config.extra_flags)
         return cmd
 
-    def _build_env(self, paths, timeout_seconds: int, repo_path: Path | None = None) -> dict[str, str]:
+    def _build_env(
+        self, paths, timeout_seconds: int, repo_path: Path | None = None
+    ) -> dict[str, str]:
         """Build the environment dict for the agent subprocess.
 
         Layering (later wins):
@@ -320,7 +346,7 @@ class ClaudeCodeRunner(AgentRunner):
         return env
 
 
-def get_agent_runner(marker: "Marker") -> AgentRunner:
+def get_agent_runner(marker: Marker) -> AgentRunner:
     """Return the appropriate agent runner for the given marker."""
     return ClaudeCodeRunner(marker=marker)
 
@@ -341,7 +367,9 @@ def run_marker(
     This is THE entry point. CLI and daemon call this.
     """
     if marker.status not in (MarkerStatus.ACTIVE,):
-        raise EngineError(f"Marker '{marker.name}' is not active (status: {marker.status.value})")
+        raise EngineError(
+            f"Marker '{marker.name}' is not active (status: {marker.status.value})"
+        )
     if not repo_path.exists():
         raise EngineError(f"Repository path does not exist: {repo_path}")
 
@@ -375,19 +403,21 @@ def run_marker(
 
     def _notify(exp_num: int, status: str, metric: float | None = None, desc: str = ""):
         if on_experiment:
-            on_experiment(ExperimentProgress(
-                exp_num=exp_num,
-                max_experiments=max_experiments,
-                status=status,
-                metric=metric,
-                previous_best=current_best if status != "keep" else None,
-                current_best=current_best,
-                kept=kept,
-                discarded=discarded,
-                crashed=crashed,
-                description=desc,
-                escalation_level=esc.escalation_level,
-            ))
+            on_experiment(
+                ExperimentProgress(
+                    exp_num=exp_num,
+                    max_experiments=max_experiments,
+                    status=status,
+                    metric=metric,
+                    previous_best=current_best if status != "keep" else None,
+                    current_best=current_best,
+                    kept=kept,
+                    discarded=discarded,
+                    crashed=crashed,
+                    description=desc,
+                    escalation_level=esc.escalation_level,
+                )
+            )
 
     try:
         for exp_num in range(1, max_experiments + 1):
@@ -397,18 +427,28 @@ def run_marker(
 
             # Check for HALT
             if esc.escalation_level == "halt":
-                logger.warning(f"HALT — {esc.total_pivots} PIVOTs exhausted, needs human")
+                logger.warning(
+                    f"HALT — {esc.total_pivots} PIVOTs exhausted, needs human"
+                )
                 final_status = "halted"
                 break
 
             # Generate program and invoke agent
             agent_result, commit_hash = _run_agent_step(
-                wt_info.path, repo_path, marker, agent_runner, results, current_best, esc,
+                wt_info.path,
+                repo_path,
+                marker,
+                agent_runner,
+                results,
+                current_best,
+                esc,
             )
 
             if commit_hash is None:
                 discarded += 1
-                _notify(exp_num, "discard", desc=agent_result.description or "no changes")
+                _notify(
+                    exp_num, "discard", desc=agent_result.description or "no changes"
+                )
                 results = read_results(wt_info.path, marker.name)
                 logger.info(f"Exp {exp_num}: discard (no changes)")
                 continue
@@ -428,16 +468,24 @@ def run_marker(
                 esc.on_crash()
                 _reset_to_before_commit(wt_info.path, commit_hash)
                 _run_restore(repo_path, marker, snapshot_ref)
-                append_result(wt_info.path, marker.name, ExperimentResult(
-                    commit=commit_hash,
-                    metric=0,
-                    guard="--",
-                    status="crash",
-                    confidence="--",
-                    description=agent_result.description,
-                ))
+                append_result(
+                    wt_info.path,
+                    marker.name,
+                    ExperimentResult(
+                        commit=commit_hash,
+                        metric=0,
+                        guard="--",
+                        status="crash",
+                        confidence="--",
+                        description=agent_result.description,
+                    ),
+                )
                 results = read_results(wt_info.path, marker.name)
-                _notify(exp_num, "crash", desc=agent_result.description or "metric extraction failed")
+                _notify(
+                    exp_num,
+                    "crash",
+                    desc=agent_result.description or "metric extraction failed",
+                )
                 logger.info(f"Exp {exp_num}: crash")
                 continue
 
@@ -446,24 +494,50 @@ def run_marker(
             # Gate 1: metric gate
             if not is_improved(new_metric, current_best, marker.metric.direction.value):
                 _record_discard_metric(
-                    wt_info.path, repo_path, marker, agent_result, commit_hash,
-                    new_metric, snapshot_ref, esc,
+                    wt_info.path,
+                    repo_path,
+                    marker,
+                    agent_result,
+                    commit_hash,
+                    new_metric,
+                    snapshot_ref,
+                    esc,
                 )
                 discarded += 1
-                _notify(exp_num, "discard", metric=new_metric, desc=agent_result.description or "metric not improved")
+                _notify(
+                    exp_num,
+                    "discard",
+                    metric=new_metric,
+                    desc=agent_result.description or "metric not improved",
+                )
                 results = read_results(wt_info.path, marker.name)
-                logger.info(f"Exp {exp_num}: discard (metric {new_metric} not better than {current_best})")
+                logger.info(
+                    f"Exp {exp_num}: discard (metric {new_metric} not better than {current_best})"
+                )
                 continue
 
             # Gate 2: guard gate
             guard_status = _run_guard_gate(
-                wt_info.path, repo_path, marker, agent_runner,
-                commit_hash, new_metric, snapshot_ref, timeout_sec, agent_result, esc,
+                wt_info.path,
+                repo_path,
+                marker,
+                agent_runner,
+                commit_hash,
+                new_metric,
+                snapshot_ref,
+                timeout_sec,
+                agent_result,
+                esc,
             )
 
             if guard_status is None:
                 discarded += 1
-                _notify(exp_num, "discard", metric=new_metric, desc=agent_result.description or "guard failed")
+                _notify(
+                    exp_num,
+                    "discard",
+                    metric=new_metric,
+                    desc=agent_result.description or "guard failed",
+                )
                 results = read_results(wt_info.path, marker.name)
                 logger.info(f"Exp {exp_num}: discard (guard failed)")
                 continue
@@ -474,25 +548,40 @@ def run_marker(
             esc.on_keep()
 
             kept_metrics = get_kept_metrics(results) + [new_metric]
-            conf = compute_confidence(kept_metrics, marker.metric.baseline, current_best)
+            conf = compute_confidence(
+                kept_metrics, marker.metric.baseline, current_best
+            )
             conf_str = f"{conf:.1f}" if conf is not None else "--"
 
-            append_result(wt_info.path, marker.name, ExperimentResult(
-                commit=commit_hash,
-                metric=new_metric,
-                guard=guard_status,
-                status="keep",
-                confidence=conf_str,
-                description=agent_result.description,
-            ))
+            append_result(
+                wt_info.path,
+                marker.name,
+                ExperimentResult(
+                    commit=commit_hash,
+                    metric=new_metric,
+                    guard=guard_status,
+                    status="keep",
+                    confidence=conf_str,
+                    description=agent_result.description,
+                ),
+            )
             results = read_results(wt_info.path, marker.name)
-            _notify(exp_num, "keep", metric=new_metric, desc=agent_result.description or "improvement kept")
+            _notify(
+                exp_num,
+                "keep",
+                metric=new_metric,
+                desc=agent_result.description or "improvement kept",
+            )
             logger.info(f"Exp {exp_num}: KEEP (metric {new_metric}, conf {conf_str})")
 
             # Check target reached
-            if marker.metric.target is not None and _target_reached(marker, current_best):
+            if marker.metric.target is not None and _target_reached(
+                marker, current_best
+            ):
                 final_status = "completed"
-                logger.info(f"Target reached: {current_best} vs target {marker.metric.target}")
+                logger.info(
+                    f"Target reached: {current_best} vs target {marker.metric.target}"
+                )
                 break
 
     finally:
@@ -511,7 +600,9 @@ def run_marker(
         def _apply_run_results(fresh_state: AppState) -> None:
             for m in fresh_state.markers:
                 if m.id == _marker_id:
-                    m.last_run_experiments = _final_kept + _final_discarded + _final_crashed
+                    m.last_run_experiments = (
+                        _final_kept + _final_discarded + _final_crashed
+                    )
                     m.last_run_kept = _final_kept
                     m.last_run_discarded = _final_discarded
                     m.current = _final_best
@@ -560,7 +651,9 @@ def run_marker(
             except GitError:
                 logger.warning(f"Failed to cleanup worktree at {wt_info.path}")
         else:
-            console_msg = f"Worktree preserved: {wt_info.path} (branch: {wt_info.branch})"
+            console_msg = (
+                f"Worktree preserved: {wt_info.path} (branch: {wt_info.branch})"
+            )
             logger.info(console_msg)
 
     return result
@@ -568,7 +661,7 @@ def run_marker(
 
 def _publish_results(
     repo_path: Path,
-    marker: "Marker",
+    marker: Marker,
     result: RunResult,
     source_branch: str,
     _results: list,
@@ -589,7 +682,11 @@ def _publish_results(
     logger.info(f"Pushing branch {source_branch} to origin")
     push_result = subprocess.run(
         ["git", "push", "origin", source_branch],
-        cwd=repo_path, capture_output=True, text=True, timeout=60,
+        check=False,
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if push_result.returncode != 0:
         logger.warning(f"Push failed: {push_result.stderr[:200]}")
@@ -609,9 +706,24 @@ def _publish_results(
     )
 
     pr_cmd = subprocess.run(
-        ["gh", "pr", "create", "--base", target, "--head", source_branch,
-         "--title", title, "--body", body],
-        cwd=repo_path, capture_output=True, text=True, timeout=30,
+        [
+            "gh",
+            "pr",
+            "create",
+            "--base",
+            target,
+            "--head",
+            source_branch,
+            "--title",
+            title,
+            "--body",
+            body,
+        ],
+        check=False,
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
 
     if pr_cmd.returncode == 0:
@@ -622,9 +734,20 @@ def _publish_results(
         if marker.auto_merge.enabled:
             pr_number = pr_url.rstrip("/").split("/")[-1]
             merge_cmd = subprocess.run(
-                ["gh", "pr", "merge", pr_number, "--squash", "--auto",
-                 "--delete-branch=false"],
-                cwd=repo_path, capture_output=True, text=True, timeout=30,
+                [
+                    "gh",
+                    "pr",
+                    "merge",
+                    pr_number,
+                    "--squash",
+                    "--auto",
+                    "--delete-branch=false",
+                ],
+                check=False,
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if merge_cmd.returncode == 0:
                 result.auto_merged = True
@@ -633,7 +756,11 @@ def _publish_results(
             else:
                 merge_cmd2 = subprocess.run(
                     ["gh", "pr", "merge", pr_number, "--squash"],
-                    cwd=repo_path, capture_output=True, text=True, timeout=30,
+                    check=False,
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 if merge_cmd2.returncode == 0:
                     result.auto_merged = True
@@ -661,10 +788,14 @@ def _run_state_update(repo_path: Path) -> None:
     try:
         subprocess.run(
             ["bash", str(script), str(repo_path)],
-            cwd=repo_path, capture_output=True, text=True, timeout=30,
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         logger.info("State update completed")
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         logger.warning("state-update.sh failed")
 
 
@@ -685,7 +816,11 @@ def _run_agent_step(
     results_summary = _format_results_for_program(results)
     ideas_content = read_ideas(worktree_path, marker.name)
     program = generate_program(
-        marker, current_best, results_summary, ideas_content, esc.escalation_level,
+        marker,
+        current_best,
+        results_summary,
+        ideas_content,
+        esc.escalation_level,
         repo_path=repo_path,
     )
 
@@ -707,14 +842,18 @@ def _run_agent_step(
 
     if not commit_hash:
         esc.on_discard()
-        append_result(worktree_path, marker.name, ExperimentResult(
-            commit="-------",
-            metric=0,
-            guard="--",
-            status="discard",
-            confidence="--",
-            description=agent_result.description or "no changes made",
-        ))
+        append_result(
+            worktree_path,
+            marker.name,
+            ExperimentResult(
+                commit="-------",
+                metric=0,
+                guard="--",
+                status="discard",
+                confidence="--",
+                description=agent_result.description or "no changes made",
+            ),
+        )
         return agent_result, None
 
     return agent_result, commit_hash
@@ -734,16 +873,22 @@ def _record_discard_metric(
     esc.on_discard()
     _reset_to_before_commit(worktree_path, commit_hash)
     _run_restore(repo_path, marker, snapshot_ref)
-    _write_discard_idea(worktree_path, marker.name, agent_result.description, new_metric)
+    _write_discard_idea(
+        worktree_path, marker.name, agent_result.description, new_metric
+    )
     _write_telemetry_feedback(worktree_path, marker.name, agent_result)
-    append_result(worktree_path, marker.name, ExperimentResult(
-        commit=commit_hash,
-        metric=new_metric,
-        guard="--",
-        status="discard",
-        confidence="--",
-        description=agent_result.description,
-    ))
+    append_result(
+        worktree_path,
+        marker.name,
+        ExperimentResult(
+            commit=commit_hash,
+            metric=new_metric,
+            guard="--",
+            status="discard",
+            confidence="--",
+            description=agent_result.description,
+        ),
+    )
 
 
 def _run_guard_gate(
@@ -778,7 +923,10 @@ def _run_guard_gate(
         return "pass"
 
     fixed = _handle_guard_failure(
-        worktree_path, marker, agent_runner, guard_result,
+        worktree_path,
+        marker,
+        agent_runner,
+        guard_result,
         marker.guard.rework_attempts,
     )
 
@@ -788,14 +936,18 @@ def _run_guard_gate(
     esc.on_discard()
     _reset_to_before_commit(worktree_path, commit_hash)
     _run_restore(repo_path, marker, snapshot_ref)
-    append_result(worktree_path, marker.name, ExperimentResult(
-        commit=commit_hash,
-        metric=new_metric,
-        guard="fail",
-        status="discard",
-        confidence="--",
-        description=f"{agent_result.description} (guard failed after rework)",
-    ))
+    append_result(
+        worktree_path,
+        marker.name,
+        ExperimentResult(
+            commit=commit_hash,
+            metric=new_metric,
+            guard="fail",
+            status="discard",
+            confidence="--",
+            description=f"{agent_result.description} (guard failed after rework)",
+        ),
+    )
     return None
 
 
@@ -849,16 +1001,22 @@ def _run_snapshot(repo_path: Path, marker: Marker, exp_num: int) -> str | None:
         expanded = cmd.replace("{exp_num}", str(exp_num))
         result = subprocess.run(
             ["bash", "-c", expanded],
-            cwd=repo_path, capture_output=True, text=True, timeout=120,
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.returncode == 0:
             snap_id = result.stdout.strip().split("\n")[-1]
             logger.info(f"Pre-experiment snapshot: {snap_id}")
             return snap_id
-        logger.warning(f"Snapshot command failed (rc={result.returncode}): {result.stderr[:200]}")
+        logger.warning(
+            f"Snapshot command failed (rc={result.returncode}): {result.stderr[:200]}"
+        )
     except subprocess.TimeoutExpired:
         logger.warning("Snapshot command timed out (120s)")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         logger.warning(f"Snapshot command error: {e}")
     return None
 
@@ -872,15 +1030,21 @@ def _run_restore(repo_path: Path, marker: Marker, snapshot_ref: str | None) -> N
         expanded = cmd.replace("{snapshot_id}", snapshot_ref)
         result = subprocess.run(
             ["bash", "-c", expanded],
-            cwd=repo_path, capture_output=True, text=True, timeout=120,
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.returncode == 0:
             logger.info(f"Restore completed for snapshot {snapshot_ref}")
         else:
-            logger.warning(f"Restore failed (rc={result.returncode}): {result.stderr[:200]}")
+            logger.warning(
+                f"Restore failed (rc={result.returncode}): {result.stderr[:200]}"
+            )
     except subprocess.TimeoutExpired:
         logger.warning("Restore command timed out (120s)")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         logger.warning(f"Restore command error: {e}")
 
 
@@ -899,7 +1063,9 @@ def _format_results_for_program(results: list[ExperimentResult]) -> str:
         return ""
     lines = []
     for r in results:
-        lines.append(f"{r.commit}\t{r.metric}\t{r.guard}\t{r.status}\t{r.confidence}\t{r.description}")
+        lines.append(
+            f"{r.commit}\t{r.metric}\t{r.guard}\t{r.status}\t{r.confidence}\t{r.description}"
+        )
     return "\n".join(lines)
 
 
@@ -927,7 +1093,12 @@ def _write_telemetry_feedback(
         telemetry = agent_result.telemetry
         if hasattr(telemetry, "errors") and telemetry.errors:
             summary = "; ".join(telemetry.errors[:3])
-            append_idea(worktree_path, marker_name, "Discarded but Promising", f"**Agent errors:** {summary}")
+            append_idea(
+                worktree_path,
+                marker_name,
+                "Discarded but Promising",
+                f"**Agent errors:** {summary}",
+            )
         if hasattr(telemetry, "permission_denials") and telemetry.permission_denials:
             # permission_denials can be list[dict] (from Claude stream-json) or list[str]
             denials = []
@@ -937,7 +1108,12 @@ def _write_telemetry_feedback(
                 else:
                     denials.append(str(d))
             summary = "; ".join(denials)
-            append_idea(worktree_path, marker_name, "Near-Misses", f"**Permission denied:** {summary}")
+            append_idea(
+                worktree_path,
+                marker_name,
+                "Near-Misses",
+                f"**Permission denied:** {summary}",
+            )
     except (ValueError, OSError):
         pass
 

@@ -159,7 +159,7 @@ class DaemonRunner:
                 continue
             try:
                 mf = load_markers(mf_path)
-            except Exception:
+            except Exception:  # noqa: BLE001, S112 -- One invalid marker must not stop scheduling other markers.
                 continue
             marker = get_marker(mf, tracked.marker_name)
             if not marker:
@@ -205,7 +205,9 @@ class DaemonRunner:
             )
             logger.info(
                 "Completed %s: %d experiments, %d kept",
-                tracked.id, result.experiments, result.kept,
+                tracked.id,
+                result.experiments,
+                result.kept,
             )
         except EngineError as e:
             logger.error("Engine error for %s: %s", tracked.id, e)
@@ -291,7 +293,7 @@ def daemonize(
     os.dup2(devnull, sys.stdin.fileno())
     os.close(devnull)
 
-    log_fd = open(log_path, "a")
+    log_fd = open(log_path, "a")  # noqa: SIM115 -- Logging owns this stream until daemon shutdown.
     os.dup2(log_fd.fileno(), sys.stdout.fileno())
     os.dup2(log_fd.fileno(), sys.stderr.fileno())
 

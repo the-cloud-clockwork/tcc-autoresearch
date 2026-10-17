@@ -2,10 +2,9 @@
 
 import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
-
-from unittest.mock import MagicMock, patch
 
 from autoresearch.worktree import (
     GitError,
@@ -34,7 +33,9 @@ def git_repo(tmp_path):
         "HOME": str(tmp_path),
     }
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, env=env)
-    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True, env=env)
+    subprocess.run(
+        ["git", "add", "."], cwd=repo, check=True, capture_output=True, env=env
+    )
     subprocess.run(
         ["git", "commit", "-m", "initial"],
         cwd=repo,
@@ -155,9 +156,11 @@ class TestUniqueBranch:
         mock_result = MagicMock()
         mock_result.stdout = "\n".join(all_names)
 
-        with patch("autoresearch.worktree._run_git", return_value=mock_result):
-            with pytest.raises(GitError, match="Could not find unique branch name"):
-                _unique_branch(git_repo, base)
+        with (
+            patch("autoresearch.worktree._run_git", return_value=mock_result),
+            pytest.raises(GitError, match="Could not find unique branch name"),
+        ):
+            _unique_branch(git_repo, base)
 
 
 class TestCreateWorktreeFailure:
@@ -180,11 +183,15 @@ class TestCreateWorktreeFailure:
             temp_dirs_created.append(Path(path))
             return path
 
-        with patch("autoresearch.worktree._run_git", side_effect=selective_mock), \
-             patch("autoresearch.worktree.mkdtemp", side_effect=tracking_mkdtemp):
-            with pytest.raises(GitError):
-                create_worktree(git_repo, "fail-test")
+        with (
+            patch("autoresearch.worktree._run_git", side_effect=selective_mock),
+            patch("autoresearch.worktree.mkdtemp", side_effect=tracking_mkdtemp),
+            pytest.raises(GitError),
+        ):
+            create_worktree(git_repo, "fail-test")
 
         # Temp dir should have been cleaned up
         assert temp_dirs_created, "Expected a temp dir to be created"
-        assert not temp_dirs_created[0].exists(), "Temp dir should be removed on failure"
+        assert not temp_dirs_created[0].exists(), (
+            "Temp dir should be removed on failure"
+        )
