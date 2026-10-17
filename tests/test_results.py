@@ -171,15 +171,20 @@ class TestExperimentResultDefaults:
 class TestGetLatestMetricExtended:
     def test_empty_list_returns_none(self):
         from autoresearch.results import get_latest_metric
+
         assert get_latest_metric([]) is None
 
     def test_only_discard_returns_none(self):
         from autoresearch.results import ExperimentResult, get_latest_metric
-        results = [ExperimentResult(commit="a", metric=5.0, status="discard", description="")]
+
+        results = [
+            ExperimentResult(commit="a", metric=5.0, status="discard", description="")
+        ]
         assert get_latest_metric(results) is None
 
     def test_returns_last_keep(self):
         from autoresearch.results import ExperimentResult, get_latest_metric
+
         results = [
             ExperimentResult(commit="a", metric=10.0, status="keep", description=""),
             ExperimentResult(commit="b", metric=20.0, status="keep", description=""),
