@@ -59,7 +59,8 @@ def run_harness(
     try:
         result = subprocess.run(
             ["bash", "-c", command],
-            check=False, cwd=worktree_path,
+            check=False,
+            cwd=worktree_path,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -67,9 +68,17 @@ def run_harness(
     except subprocess.TimeoutExpired as e:
         partial = ""
         if e.stdout:
-            partial += e.stdout if isinstance(e.stdout, str) else e.stdout.decode(errors="replace")
+            partial += (
+                e.stdout
+                if isinstance(e.stdout, str)
+                else e.stdout.decode(errors="replace")
+            )
         if e.stderr:
-            partial += e.stderr if isinstance(e.stderr, str) else e.stderr.decode(errors="replace")
+            partial += (
+                e.stderr
+                if isinstance(e.stderr, str)
+                else e.stderr.decode(errors="replace")
+            )
         log_content = f"TIMEOUT: command exceeded time limit\n{partial}"
         log_path.write_text(log_content, errors="replace")
         return HarnessResult(
@@ -105,7 +114,8 @@ def run_guard(
     try:
         result = subprocess.run(
             ["bash", "-c", command],
-            check=False, cwd=worktree_path,
+            check=False,
+            cwd=worktree_path,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -121,19 +131,16 @@ def run_guard(
             return GuardResult(passed=False, value=None, output=combined)
         return GuardResult(passed=value >= threshold, value=value, output=combined)
 
-    return GuardResult(
-        passed=result.returncode == 0, value=None, output=combined
-    )
+    return GuardResult(passed=result.returncode == 0, value=None, output=combined)
 
 
-def _extract_metric(
-    output: str, extract: str, cwd: Path | None = None
-) -> float | None:
+def _extract_metric(output: str, extract: str, cwd: Path | None = None) -> float | None:
     """Extract a numeric value from output using a shell expression."""
     try:
         result = subprocess.run(
-            ["bash", "-c", f'echo {_shell_quote(output)} | {extract}'],
-            check=False, capture_output=True,
+            ["bash", "-c", f"echo {_shell_quote(output)} | {extract}"],
+            check=False,
+            capture_output=True,
             text=True,
             timeout=10,
             cwd=cwd,
@@ -154,9 +161,7 @@ def _shell_quote(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
 
-def is_improved(
-    current: float, previous: float, direction: str
-) -> bool:
+def is_improved(current: float, previous: float, direction: str) -> bool:
     """Check if current metric is strictly better than previous."""
     if direction == "higher":
         return current > previous

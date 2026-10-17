@@ -205,7 +205,9 @@ class DaemonRunner:
             )
             logger.info(
                 "Completed %s: %d experiments, %d kept",
-                tracked.id, result.experiments, result.kept,
+                tracked.id,
+                result.experiments,
+                result.kept,
             )
         except EngineError as e:
             logger.error("Engine error for %s: %s", tracked.id, e)

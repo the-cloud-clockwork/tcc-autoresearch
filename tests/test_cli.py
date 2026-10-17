@@ -22,14 +22,24 @@ from autoresearch.state import AppState, TrackedMarker, save_state
 runner = CliRunner()
 
 
-def _make_marker(name: str = "test-marker", status: MarkerStatus = MarkerStatus.ACTIVE) -> Marker:
+def _make_marker(
+    name: str = "test-marker", status: MarkerStatus = MarkerStatus.ACTIVE
+) -> Marker:
     return Marker(
         name=name,
         description="test",
         status=status,
         target=Target(mutable=["src/main.py"]),
-        metric=Metric(command="echo 42", extract=r"\d+", direction="higher", baseline=10.0, target=50.0),
-        agent=AgentConfig(model="sonnet", budget_per_experiment="5m", max_experiments=10),
+        metric=Metric(
+            command="echo 42",
+            extract=r"\d+",
+            direction="higher",
+            baseline=10.0,
+            target=50.0,
+        ),
+        agent=AgentConfig(
+            model="sonnet", budget_per_experiment="5m", max_experiments=10
+        ),
     )
 
 
@@ -56,6 +66,7 @@ def _save_state_file(state: AppState, path: Path) -> None:
 # Headless list
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessList:
     def test_empty_state(self, tmp_path):
         state_path = tmp_path / "state.json"
@@ -75,7 +86,10 @@ class TestHeadlessList:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, ["--headless", "list"])
@@ -106,6 +120,7 @@ class TestHeadlessList:
 # Headless status
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessStatus:
     def test_valid_marker(self):
         tracked = _make_tracked(baseline=10.0, current=25.0)
@@ -115,10 +130,15 @@ class TestHeadlessStatus:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -138,13 +158,16 @@ class TestHeadlessStatus:
 # Headless results
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessResults:
     def test_empty_results(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
 
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -161,13 +184,23 @@ class TestHeadlessResults:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         ensure_results_dir(tmp_path, "test-marker")
-        append_result(tmp_path, "test-marker", ExperimentResult(
-            commit="abc1234", metric=42.0, guard="pass", status="keep",
-            confidence="--", description="test experiment",
-        ))
+        append_result(
+            tmp_path,
+            "test-marker",
+            ExperimentResult(
+                commit="abc1234",
+                metric=42.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="test experiment",
+            ),
+        )
 
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -185,13 +218,16 @@ class TestHeadlessResults:
 # Headless ideas
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessIdeas:
     def test_empty_ideas(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
 
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -203,10 +239,14 @@ class TestHeadlessIdeas:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         create_ideas_template(tmp_path, "test-marker")
-        append_idea(tmp_path, "test-marker", "Discarded but Promising", "Try caching approach")
+        append_idea(
+            tmp_path, "test-marker", "Discarded but Promising", "Try caching approach"
+        )
 
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -217,13 +257,16 @@ class TestHeadlessIdeas:
 # Headless confidence
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessConfidence:
     def test_no_data(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
 
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -234,7 +277,9 @@ class TestHeadlessConfidence:
         state = AppState(markers=[tracked])
 
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -246,22 +291,37 @@ class TestHeadlessConfidence:
 # Headless add
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessAdd:
     def test_add_from_repo_path(self, tmp_path):
         # Create a valid marker file
         import yaml
+
         marker_yaml = {
-            "markers": [{
-                "name": "speed-test",
-                "target": {"mutable": ["main.py"]},
-                "metric": {"command": "echo 1", "extract": r"\d+", "direction": "higher", "baseline": 1.0},
-                "agent": {"model": "sonnet", "budget_per_experiment": "5m", "max_experiments": 10},
-            }]
+            "markers": [
+                {
+                    "name": "speed-test",
+                    "target": {"mutable": ["main.py"]},
+                    "metric": {
+                        "command": "echo 1",
+                        "extract": r"\d+",
+                        "direction": "higher",
+                        "baseline": 1.0,
+                    },
+                    "agent": {
+                        "model": "sonnet",
+                        "budget_per_experiment": "5m",
+                        "max_experiments": 10,
+                    },
+                }
+            ]
         }
         (tmp_path / ".autoresearch.yaml").write_text(yaml.dump(marker_yaml))
 
-        with patch("autoresearch.cli.load_state", return_value=AppState()), \
-             patch("autoresearch.cli.save_state"):
+        with (
+            patch("autoresearch.cli.load_state", return_value=AppState()),
+            patch("autoresearch.cli.save_state"),
+        ):
             result = runner.invoke(app, ["--headless", "add", "--path", str(tmp_path)])
 
         assert result.exit_code == 0
@@ -280,14 +340,19 @@ class TestHeadlessAdd:
 # Headless detach
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessDetach:
     def test_detach_existing(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
 
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -303,14 +368,19 @@ class TestHeadlessDetach:
 # Headless skip
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessSkip:
     def test_skip_active_marker(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
 
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -320,9 +390,13 @@ class TestHeadlessSkip:
         tracked = _make_tracked(status_override=MarkerStatus.SKIP)
         state = AppState(markers=[tracked])
 
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -338,14 +412,19 @@ class TestHeadlessSkip:
 # Headless run
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessPause:
     def test_pause_active_marker(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
 
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -355,9 +434,13 @@ class TestHeadlessPause:
         tracked = _make_tracked(status_override=MarkerStatus.PAUSED)
         state = AppState(markers=[tracked])
 
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -384,21 +467,34 @@ class TestHeadlessRun:
         mf = MarkerFile(markers=[marker])
         mock_result = RunResult(
             marker_name="test-marker",
-            experiments=5, kept=3, discarded=2, crashed=0,
-            final_metric=42.0, final_confidence=1.5,
-            final_status="active", branch="autoresearch/test-marker-mar30",
+            experiments=5,
+            kept=3,
+            discarded=2,
+            crashed=0,
+            final_metric=42.0,
+            final_confidence=1.5,
+            final_status="active",
+            branch="autoresearch/test-marker-mar30",
             worktree_path="/tmp/wt",
         )
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.get_effective_status", return_value=MarkerStatus.ACTIVE),
+            patch(
+                "autoresearch.cli.get_effective_status",
+                return_value=MarkerStatus.ACTIVE,
+            ),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", return_value=mock_result),
         ):
-            result = runner.invoke(app, ["--headless", "run", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "run", "-m", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -410,6 +506,7 @@ class TestHeadlessRun:
 # ---------------------------------------------------------------------------
 # Headless no command
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessNoCommand:
     def test_exits_code_2(self):
@@ -426,6 +523,7 @@ class TestHeadlessNoCommand:
 # Daemon subcommands
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonStatus:
     def test_headless_status_stopped(self):
         with (
@@ -440,6 +538,7 @@ class TestDaemonStatus:
 
     def test_headless_status_running(self):
         import os
+
         state = AppState()
         state.daemon.running = True
         state.daemon.pid = os.getpid()
@@ -474,6 +573,7 @@ class TestDaemonStop:
 class TestDaemonStart:
     def test_headless_already_running(self):
         import os
+
         with (
             patch("autoresearch.daemon.check_stale_pid"),
             patch("autoresearch.daemon.read_pid", return_value=os.getpid()),
@@ -535,7 +635,10 @@ class TestInteractiveMode:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, [], input="q\n")
@@ -556,9 +659,14 @@ class TestInteractiveMode:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", side_effect=find_marker_side_effect),
+            patch(
+                "autoresearch.cli.find_marker_file", side_effect=find_marker_side_effect
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.get_effective_status", return_value=MarkerStatus.ACTIVE),
+            patch(
+                "autoresearch.cli.get_effective_status",
+                return_value=MarkerStatus.ACTIVE,
+            ),
         ):
             # Select marker 1, then quit submenu, then quit main (quit = n+1 = 2)
             result = runner.invoke(app, [], input="1\nq\n2\n")
@@ -570,10 +678,14 @@ class TestInteractiveMode:
 # Headless init
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessInit:
     def test_init_creates_config(self, tmp_path):
         with (
-            patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=tmp_path / ".autoresearch"),
+            patch(
+                "autoresearch.agent_profile.init_autoresearch_dir",
+                return_value=tmp_path / ".autoresearch",
+            ),
         ):
             result = runner.invoke(app, ["--headless", "init", "--path", str(tmp_path)])
         assert result.exit_code == 0
@@ -588,7 +700,9 @@ class TestHeadlessInit:
         config_path.write_text("markers: []")
 
         with (
-            patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir),
+            patch(
+                "autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir
+            ),
         ):
             result = runner.invoke(app, ["--headless", "init", "--path", str(tmp_path)])
         assert result.exit_code == 0
@@ -599,6 +713,7 @@ class TestHeadlessInit:
 # ---------------------------------------------------------------------------
 # Headless finalize
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessFinalize:
     def test_finalize_nonexistent_marker(self):
@@ -615,21 +730,29 @@ class TestHeadlessFinalize:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.finalize.finalize_marker", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "finalize", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "finalize", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["data"]["branches"] == []
 
     def test_finalize_with_branches(self, tmp_path):
-        tracked = _make_tracked(repo_path=str(tmp_path), branch="autoresearch/test-marker-mar31")
+        tracked = _make_tracked(
+            repo_path=str(tmp_path), branch="autoresearch/test-marker-mar31"
+        )
         state = AppState(markers=[tracked])
-        mock_branches = [{"branch": "finalize/test-marker-001", "description": "Cached results"}]
+        mock_branches = [
+            {"branch": "finalize/test-marker-001", "description": "Cached results"}
+        ]
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.finalize.finalize_marker", return_value=mock_branches),
         ):
-            result = runner.invoke(app, ["--headless", "finalize", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "finalize", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert len(data["data"]["branches"]) == 1
@@ -639,6 +762,7 @@ class TestHeadlessFinalize:
 # ---------------------------------------------------------------------------
 # Headless merge
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessMerge:
     def test_merge_nonexistent_marker(self):
@@ -652,7 +776,9 @@ class TestHeadlessMerge:
         state = AppState(markers=[tracked])
 
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "merge", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "merge", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 1
         assert "error" in result.output
 
@@ -662,9 +788,13 @@ class TestHeadlessMerge:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.finalize.merge_finalized", return_value="abc1234567890"),
+            patch(
+                "autoresearch.finalize.merge_finalized", return_value="abc1234567890"
+            ),
         ):
-            result = runner.invoke(app, ["--headless", "merge", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "merge", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["data"]["merged"] == "autoresearch/test-marker-mar31"
@@ -677,12 +807,23 @@ class TestHeadlessMerge:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.finalize.merge_finalized", return_value="def0987654321"),
+            patch(
+                "autoresearch.finalize.merge_finalized", return_value="def0987654321"
+            ),
         ):
-            result = runner.invoke(app, [
-                "--headless", "merge", "-m", "fakerepo:test-marker",
-                "--branch", "finalize/custom-branch", "--target", "dev",
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "--headless",
+                    "merge",
+                    "-m",
+                    "fakerepo:test-marker",
+                    "--branch",
+                    "finalize/custom-branch",
+                    "--target",
+                    "dev",
+                ],
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["data"]["merged"] == "finalize/custom-branch"
@@ -694,9 +835,14 @@ class TestHeadlessMerge:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.finalize.merge_finalized", side_effect=RuntimeError("conflict")),
+            patch(
+                "autoresearch.finalize.merge_finalized",
+                side_effect=RuntimeError("conflict"),
+            ),
         ):
-            result = runner.invoke(app, ["--headless", "merge", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "merge", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 1
         assert "error" in result.output
 
@@ -704,6 +850,7 @@ class TestHeadlessMerge:
 # ---------------------------------------------------------------------------
 # Headless run --repo mode
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessRunRepoA:
     def test_run_repo_not_found(self):
@@ -720,9 +867,14 @@ class TestHeadlessRunRepoA:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.get_effective_status", return_value=MarkerStatus.SKIP),
+            patch(
+                "autoresearch.cli.get_effective_status", return_value=MarkerStatus.SKIP
+            ),
         ):
             result = runner.invoke(app, ["--headless", "run", "--repo", "fakerepo"])
         assert result.exit_code == 0
@@ -738,17 +890,28 @@ class TestHeadlessRunRepoA:
         mf = MarkerFile(markers=[marker])
         mock_result = RunResult(
             marker_name="test-marker",
-            experiments=3, kept=2, discarded=1, crashed=0,
-            final_metric=30.0, final_confidence=1.2,
-            final_status="active", branch="autoresearch/test-marker-mar31",
+            experiments=3,
+            kept=2,
+            discarded=1,
+            crashed=0,
+            final_metric=30.0,
+            final_confidence=1.2,
+            final_status="active",
+            branch="autoresearch/test-marker-mar31",
             worktree_path="/tmp/wt",
         )
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.get_effective_status", return_value=MarkerStatus.ACTIVE),
+            patch(
+                "autoresearch.cli.get_effective_status",
+                return_value=MarkerStatus.ACTIVE,
+            ),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", return_value=mock_result),
         ):
@@ -762,6 +925,7 @@ class TestHeadlessRunRepoA:
 # ---------------------------------------------------------------------------
 # Non-headless (interactive) CLI paths
 # ---------------------------------------------------------------------------
+
 
 class TestInteractiveList:
     def test_empty_state_prints_message(self):
@@ -778,7 +942,10 @@ class TestInteractiveList:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, ["list"])
@@ -800,7 +967,10 @@ class TestInteractiveStatus:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, ["status", "-m", "fakerepo:test-marker"])
@@ -891,7 +1061,10 @@ class TestInteractiveAdd:
 
     def test_bad_marker_file_exits_1(self, tmp_path):
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
             patch("autoresearch.cli.load_markers", side_effect=ValueError("bad yaml")),
         ):
             result = runner.invoke(app, ["add", "--path", str(tmp_path)])
@@ -903,7 +1076,10 @@ class TestInteractiveAdd:
         mf = MarkerFile(markers=[marker])
 
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.cli.track_marker", return_value=_make_tracked()),
@@ -1000,14 +1176,23 @@ class TestInteractiveRun:
         mf = MarkerFile(markers=[marker])
         mock_result = RunResult(
             marker_name="test-marker",
-            experiments=2, kept=1, discarded=1, crashed=0,
-            final_metric=25.0, final_confidence=1.0,
-            final_status="active", branch=None, worktree_path=None,
+            experiments=2,
+            kept=1,
+            discarded=1,
+            crashed=0,
+            final_metric=25.0,
+            final_confidence=1.0,
+            final_status="active",
+            branch=None,
+            worktree_path=None,
         )
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", return_value=mock_result),
@@ -1026,7 +1211,10 @@ class TestInteractiveRun:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", side_effect=EngineError("boom")),
@@ -1105,7 +1293,10 @@ class TestInteractiveMerge:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.finalize.merge_finalized", side_effect=RuntimeError("conflict")),
+            patch(
+                "autoresearch.finalize.merge_finalized",
+                side_effect=RuntimeError("conflict"),
+            ),
         ):
             result = runner.invoke(app, ["merge", "-m", "fakerepo:test-marker"])
         assert result.exit_code == 1
@@ -1115,21 +1306,34 @@ class TestInteractiveMerge:
 class TestInteractiveInit:
     def test_init_new_prints_initialized(self, tmp_path):
         with (
-            patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=tmp_path / ".autoresearch"),
+            patch(
+                "autoresearch.agent_profile.init_autoresearch_dir",
+                return_value=tmp_path / ".autoresearch",
+            ),
         ):
-            result = runner.invoke(app, ["init", "--path", str(tmp_path), "--no-claude"])
+            result = runner.invoke(
+                app, ["init", "--path", str(tmp_path), "--no-claude"]
+            )
         assert result.exit_code == 0
-        assert "Initialized" in result.output or "Synced" in result.output or "Config" in result.output
+        assert (
+            "Initialized" in result.output
+            or "Synced" in result.output
+            or "Config" in result.output
+        )
 
 
 class TestResolveMarkerDataEdgeCases:
     def test_load_markers_exception_returns_nones(self):
         tracked = _make_tracked()
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", side_effect=ValueError("bad")),
         ):
             from autoresearch.cli import _resolve_marker_data
+
             mf, m, eff = _resolve_marker_data(tracked)
         assert mf is None
         assert m is None
@@ -1139,10 +1343,14 @@ class TestResolveMarkerDataEdgeCases:
         tracked = _make_tracked(marker_name="nonexistent")
         mf = MarkerFile(markers=[_make_marker("other")])
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             from autoresearch.cli import _resolve_marker_data
+
             result = _resolve_marker_data(tracked)
         assert result == (None, None, None)
 
@@ -1150,7 +1358,17 @@ class TestResolveMarkerDataEdgeCases:
 class TestRenderMarkerTableValueError:
     def test_invalid_status_uses_raw_string(self):
         from autoresearch.cli import _render_marker_table
-        markers_data = [{"id": "r:m", "repo": "r", "marker": "m", "status": "invalid_status", "last_run": None, "current": None}]
+
+        markers_data = [
+            {
+                "id": "r:m",
+                "repo": "r",
+                "marker": "m",
+                "status": "invalid_status",
+                "last_run": None,
+                "current": None,
+            }
+        ]
         _render_marker_table(markers_data)
 
 
@@ -1170,7 +1388,10 @@ class TestDaemonCommandsNonHeadless:
             patch("autoresearch.daemon.check_stale_pid"),
             patch("autoresearch.daemon.read_pid", return_value=None),
             patch("autoresearch.daemon.is_pid_alive", return_value=False),
-            patch("autoresearch.daemon.daemonize", side_effect=RuntimeError("not supported on Windows")),
+            patch(
+                "autoresearch.daemon.daemonize",
+                side_effect=RuntimeError("not supported on Windows"),
+            ),
         ):
             result = runner.invoke(app, ["daemon", "start"])
         assert result.exit_code == 1
@@ -1224,7 +1445,10 @@ class TestDaemonCommandsNonHeadless:
             patch("autoresearch.daemon.read_pid", return_value=1234),
             patch("autoresearch.daemon.is_pid_alive", return_value=True),
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, ["daemon", "status"])
@@ -1262,6 +1486,7 @@ class TestDaemonCommandsNonHeadless:
 # Headless command paths - missing coverage
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessIdeasNotFound:
     def test_ideas_headless_marker_not_found(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
@@ -1292,7 +1517,10 @@ class TestHeadlessPauseNotFound:
 class TestHeadlessAddBadFile:
     def test_add_headless_load_markers_error(self, tmp_path):
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
             patch("autoresearch.cli.load_markers", side_effect=ValueError("bad yaml")),
         ):
             result = runner.invoke(app, ["--headless", "add", "--path", str(tmp_path)])
@@ -1304,11 +1532,18 @@ class TestHeadlessAddBadFile:
 class TestNonHeadlessResultsWithData:
     def test_results_cmd_non_headless_with_results(self, tmp_path):
         from autoresearch.results import ExperimentResult
+
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         mock_results = [
-            ExperimentResult(commit="abc123", metric=42.0, guard="pass", status="keep",
-                             confidence="1.5", description="improved"),
+            ExperimentResult(
+                commit="abc123",
+                metric=42.0,
+                guard="pass",
+                status="keep",
+                confidence="1.5",
+                description="improved",
+            ),
         ]
         with (
             patch("autoresearch.cli.load_state", return_value=state),
@@ -1324,7 +1559,9 @@ class TestNonHeadlessRunMarkerConfigMissing:
         state = AppState(markers=[tracked])
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, None, None)),
+            patch(
+                "autoresearch.cli._resolve_marker_data", return_value=(None, None, None)
+            ),
         ):
             result = runner.invoke(app, ["run", "-m", "fakerepo:test-marker"])
         assert result.exit_code == 0
@@ -1334,24 +1571,37 @@ class TestNonHeadlessRunMarkerConfigMissing:
 class TestRunWithModelOption:
     def test_run_headless_with_model_override(self):
         from autoresearch.engine import RunResult
+
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         marker = _make_marker()
         mf = MarkerFile(markers=[marker])
         mock_result = RunResult(
             marker_name="test-marker",
-            experiments=1, kept=1, discarded=0, crashed=0,
-            final_metric=20.0, final_confidence=1.0,
-            final_status="active", branch=None, worktree_path=None,
+            experiments=1,
+            kept=1,
+            discarded=0,
+            crashed=0,
+            final_metric=20.0,
+            final_confidence=1.0,
+            final_status="active",
+            branch=None,
+            worktree_path=None,
         )
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", return_value=mock_result),
         ):
-            result = runner.invoke(app, ["--headless", "run", "-m", "fakerepo:test-marker", "--model", "opus"])
+            result = runner.invoke(
+                app,
+                ["--headless", "run", "-m", "fakerepo:test-marker", "--model", "opus"],
+            )
         assert result.exit_code == 0
 
 
@@ -1361,7 +1611,10 @@ class TestDaemonStartHeadlessError:
             patch("autoresearch.daemon.check_stale_pid"),
             patch("autoresearch.daemon.read_pid", return_value=None),
             patch("autoresearch.daemon.is_pid_alive", return_value=False),
-            patch("autoresearch.daemon.daemonize", side_effect=RuntimeError("Windows not supported")),
+            patch(
+                "autoresearch.daemon.daemonize",
+                side_effect=RuntimeError("Windows not supported"),
+            ),
         ):
             result = runner.invoke(app, ["--headless", "daemon", "start"])
         assert result.exit_code == 1
@@ -1375,6 +1628,7 @@ class TestDaemonStartWithConfigPath:
         config_file = tmp_path / "config.yaml"
         config_file.write_text("daemon:\n  max_concurrent: 2\n")
         from autoresearch.config import GlobalConfig
+
         mock_config = GlobalConfig()
         with (
             patch("autoresearch.daemon.check_stale_pid"),
@@ -1383,17 +1637,27 @@ class TestDaemonStartWithConfigPath:
             patch("autoresearch.daemon.daemonize", return_value=42424),
             patch("autoresearch.config.load_config", return_value=mock_config),
         ):
-            result = runner.invoke(app, [
-                "--headless", "--config", str(config_file), "daemon", "start",
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "--headless",
+                    "--config",
+                    str(config_file),
+                    "daemon",
+                    "start",
+                ],
+            )
         assert result.exit_code == 0
 
 
 class TestDaemonStatusNonHeadlessStartedAt:
     def test_daemon_status_prints_started_at(self):
         from autoresearch.state import DaemonState
+
         state = AppState()
-        state.daemon = DaemonState(running=True, pid=1234, started_at="2026-03-31T00:00:00+00:00")
+        state.daemon = DaemonState(
+            running=True, pid=1234, started_at="2026-03-31T00:00:00+00:00"
+        )
         with (
             patch("autoresearch.daemon.check_stale_pid"),
             patch("autoresearch.daemon.read_pid", return_value=1234),
@@ -1406,6 +1670,7 @@ class TestDaemonStatusNonHeadlessStartedAt:
 
     def test_daemon_status_scheduled_with_last_run(self):
         from autoresearch.marker import Schedule
+
         tracked = _make_tracked(last_run="2026-03-31T01:00:00+00:00")
         state = AppState(markers=[tracked])
         marker = _make_marker()
@@ -1416,7 +1681,10 @@ class TestDaemonStatusNonHeadlessStartedAt:
             patch("autoresearch.daemon.read_pid", return_value=None),
             patch("autoresearch.daemon.is_pid_alive", return_value=False),
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, ["daemon", "status"])
@@ -1424,6 +1692,7 @@ class TestDaemonStatusNonHeadlessStartedAt:
 
     def test_daemon_status_scheduled_invalid_cron(self):
         from autoresearch.marker import Schedule
+
         tracked = _make_tracked(last_run="2026-03-31T01:00:00")
         state = AppState(markers=[tracked])
         marker = _make_marker()
@@ -1434,7 +1703,10 @@ class TestDaemonStatusNonHeadlessStartedAt:
             patch("autoresearch.daemon.read_pid", return_value=None),
             patch("autoresearch.daemon.is_pid_alive", return_value=False),
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, ["daemon", "status"])
@@ -1454,15 +1726,18 @@ class TestDaemonLogsFollowHeadless:
 # Private interactive helper functions - direct unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestPrivateShowStatus:
     def test_prints_all_fields(self):
         from autoresearch.cli import _show_status_interactive
+
         tracked = _make_tracked(baseline=5.0, current=15.0, branch="autoresearch/test")
         marker = _make_marker()
         _show_status_interactive(tracked, marker, MarkerStatus.ACTIVE)
 
     def test_prints_with_none_marker(self):
         from autoresearch.cli import _show_status_interactive
+
         tracked = _make_tracked()
         _show_status_interactive(tracked, None, None)
 
@@ -1470,6 +1745,7 @@ class TestPrivateShowStatus:
 class TestPrivateShowResults:
     def test_no_results(self):
         from autoresearch.cli import _show_results_interactive
+
         tracked = _make_tracked()
         with patch("autoresearch.results.read_results", return_value=[]):
             _show_results_interactive(tracked)
@@ -1477,12 +1753,25 @@ class TestPrivateShowResults:
     def test_with_results_renders_table(self, tmp_path):
         from autoresearch.cli import _show_results_interactive
         from autoresearch.results import ExperimentResult
+
         tracked = _make_tracked(repo_path=str(tmp_path))
         results = [
-            ExperimentResult(commit="a1b2c3d", metric=50.0, guard="pass",
-                             status="keep", confidence="2.0", description="test"),
-            ExperimentResult(commit="e5f6g7h", metric=55.0, guard="pass",
-                             status="keep", confidence="--", description="better"),
+            ExperimentResult(
+                commit="a1b2c3d",
+                metric=50.0,
+                guard="pass",
+                status="keep",
+                confidence="2.0",
+                description="test",
+            ),
+            ExperimentResult(
+                commit="e5f6g7h",
+                metric=55.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="better",
+            ),
         ]
         with patch("autoresearch.results.read_results", return_value=results):
             _show_results_interactive(tracked)
@@ -1493,6 +1782,7 @@ class TestPrivateToggleSkip:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _toggle_skip
+
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         marker = _make_marker()
@@ -1508,6 +1798,7 @@ class TestPrivateToggleSkip:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _toggle_skip
+
         tracked = _make_tracked(status_override=MarkerStatus.SKIP)
         state = AppState(markers=[tracked])
         marker = _make_marker()
@@ -1523,6 +1814,7 @@ class TestPrivateToggleSkip:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _toggle_skip
+
         tracked = _make_tracked(marker_id="missing:marker")
         state = AppState(markers=[])
         marker = _make_marker()
@@ -1536,6 +1828,7 @@ class TestPrivateTogglePause:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _toggle_pause
+
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         marker = _make_marker()
@@ -1551,6 +1844,7 @@ class TestPrivateTogglePause:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _toggle_pause
+
         tracked = _make_tracked(status_override=MarkerStatus.PAUSED)
         state = AppState(markers=[tracked])
         marker = _make_marker()
@@ -1566,6 +1860,7 @@ class TestPrivateTogglePause:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _toggle_pause
+
         tracked = _make_tracked(marker_id="missing:marker")
         state = AppState(markers=[])
         marker = _make_marker()
@@ -1577,12 +1872,14 @@ class TestPrivateTogglePause:
 class TestPrivateEditConfig:
     def test_no_marker_file_prints_error(self, capsys):
         from autoresearch.cli import _edit_config
+
         tracked = _make_tracked()
         with patch("autoresearch.cli.find_marker_file", return_value=None):
             _edit_config(tracked)
 
     def test_with_marker_file_runs_editor(self, tmp_path):
         from autoresearch.cli import _edit_config
+
         tracked = _make_tracked(repo_path=str(tmp_path))
         marker_file = tmp_path / ".autoresearch.yaml"
         with (
@@ -1596,6 +1893,7 @@ class TestPrivateEditConfig:
 class TestPrivateShowBranch:
     def test_no_branch_prints_message(self):
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked(branch=None)
         _show_branch(tracked)
 
@@ -1603,6 +1901,7 @@ class TestPrivateShowBranch:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked(repo_path=str(tmp_path), branch="autoresearch/test")
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -1614,6 +1913,7 @@ class TestPrivateShowBranch:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked(repo_path=str(tmp_path), branch="autoresearch/test")
         mock_result = MagicMock()
         mock_result.returncode = 1
@@ -1623,6 +1923,7 @@ class TestPrivateShowBranch:
 
     def test_branch_subprocess_exception(self, tmp_path):
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked(repo_path=str(tmp_path), branch="autoresearch/test")
         with patch("subprocess.run", side_effect=OSError("not found")):
             _show_branch(tracked)
@@ -1631,12 +1932,14 @@ class TestPrivateShowBranch:
 class TestPrivateShowIdeas:
     def test_empty_ideas(self):
         from autoresearch.cli import _show_ideas_interactive
+
         tracked = _make_tracked()
         with patch("autoresearch.ideas.read_ideas", return_value=""):
             _show_ideas_interactive(tracked)
 
     def test_with_ideas_content(self):
         from autoresearch.cli import _show_ideas_interactive
+
         tracked = _make_tracked()
         with patch("autoresearch.ideas.read_ideas", return_value="idea 1\nidea 2"):
             _show_ideas_interactive(tracked)
@@ -1645,16 +1948,20 @@ class TestPrivateShowIdeas:
 class TestPrivateShowConfidence:
     def test_no_baseline_prints_message(self):
         from autoresearch.cli import _show_confidence_interactive
+
         tracked = _make_tracked(baseline=None, current=None)
         with patch("autoresearch.results.read_results", return_value=[]):
             _show_confidence_interactive(tracked)
 
     def test_with_baseline_and_score(self):
         from autoresearch.cli import _show_confidence_interactive
+
         tracked = _make_tracked(baseline=10.0, current=20.0)
         with (
             patch("autoresearch.results.read_results", return_value=[]),
-            patch("autoresearch.results.get_kept_metrics", return_value=[10.0, 15.0, 20.0]),
+            patch(
+                "autoresearch.results.get_kept_metrics", return_value=[10.0, 15.0, 20.0]
+            ),
             patch("autoresearch.metrics.compute_confidence", return_value=1.5),
             patch("autoresearch.metrics.confidence_label", return_value="high"),
         ):
@@ -1662,6 +1969,7 @@ class TestPrivateShowConfidence:
 
     def test_with_baseline_no_score(self):
         from autoresearch.cli import _show_confidence_interactive
+
         tracked = _make_tracked(baseline=10.0, current=20.0)
         with (
             patch("autoresearch.results.read_results", return_value=[]),
@@ -1677,6 +1985,7 @@ class TestPrivateFinalizeInteractive:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _finalize_interactive
+
         tracked = _make_tracked()
         ctx = MagicMock()
         with patch("autoresearch.results.read_results", return_value=[]):
@@ -1687,9 +1996,14 @@ class TestPrivateFinalizeInteractive:
 
         from autoresearch.cli import _finalize_interactive
         from autoresearch.results import ExperimentResult
+
         tracked = _make_tracked()
         ctx = MagicMock()
-        results = [ExperimentResult(commit="a1", metric=10.0, guard="pass", status="keep", description="x")]
+        results = [
+            ExperimentResult(
+                commit="a1", metric=10.0, guard="pass", status="keep", description="x"
+            )
+        ]
         with (
             patch("autoresearch.results.read_results", return_value=results),
             patch("autoresearch.finalize.finalize_marker", return_value=[]),
@@ -1701,9 +2015,14 @@ class TestPrivateFinalizeInteractive:
 
         from autoresearch.cli import _finalize_interactive
         from autoresearch.results import ExperimentResult
+
         tracked = _make_tracked()
         ctx = MagicMock()
-        results = [ExperimentResult(commit="a1", metric=10.0, guard="pass", status="keep", description="x")]
+        results = [
+            ExperimentResult(
+                commit="a1", metric=10.0, guard="pass", status="keep", description="x"
+            )
+        ]
         branches = [{"branch": "finalize/x", "description": "good change"}]
         with (
             patch("autoresearch.results.read_results", return_value=results),
@@ -1717,6 +2036,7 @@ class TestPrivateMergeInteractive:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _merge_interactive
+
         tracked = _make_tracked(branch=None)
         ctx = MagicMock()
         _merge_interactive(ctx, tracked)
@@ -1725,6 +2045,7 @@ class TestPrivateMergeInteractive:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _merge_interactive
+
         tracked = _make_tracked(branch="autoresearch/test-mar31")
         ctx = MagicMock()
         with (
@@ -1737,11 +2058,15 @@ class TestPrivateMergeInteractive:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _merge_interactive
+
         tracked = _make_tracked(branch="autoresearch/test-mar31")
         ctx = MagicMock()
         with (
             patch("rich.prompt.Prompt.ask", return_value="main"),
-            patch("autoresearch.finalize.merge_finalized", side_effect=RuntimeError("conflict")),
+            patch(
+                "autoresearch.finalize.merge_finalized",
+                side_effect=RuntimeError("conflict"),
+            ),
         ):
             _merge_interactive(ctx, tracked)
 
@@ -1751,9 +2076,12 @@ class TestPrivateRunSingleMarker:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_single_marker
+
         tracked = _make_tracked()
         ctx = MagicMock()
-        with patch("autoresearch.cli._resolve_marker_data", return_value=(None, None, None)):
+        with patch(
+            "autoresearch.cli._resolve_marker_data", return_value=(None, None, None)
+        ):
             _run_single_marker(ctx, tracked)
 
     def test_run_success_prints_summary(self):
@@ -1761,18 +2089,28 @@ class TestPrivateRunSingleMarker:
 
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import RunResult
+
         tracked = _make_tracked()
         ctx = MagicMock()
         marker = _make_marker()
         mf = MarkerFile(markers=[marker])
         mock_result = RunResult(
             marker_name="test-marker",
-            experiments=2, kept=1, discarded=1, crashed=0,
-            final_metric=30.0, final_confidence=1.2,
-            final_status="active", branch=None, worktree_path=None,
+            experiments=2,
+            kept=1,
+            discarded=1,
+            crashed=0,
+            final_metric=30.0,
+            final_confidence=1.2,
+            final_status="active",
+            branch=None,
+            worktree_path=None,
         )
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(mf, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(mf, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", return_value=mock_result),
@@ -1784,12 +2122,16 @@ class TestPrivateRunSingleMarker:
 
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import EngineError
+
         tracked = _make_tracked()
         ctx = MagicMock()
         marker = _make_marker()
         mf = MarkerFile(markers=[marker])
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(mf, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(mf, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", side_effect=EngineError("boom")),
@@ -1801,18 +2143,28 @@ class TestPrivateRunSingleMarker:
 
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import RunResult
+
         tracked = _make_tracked()
         ctx = MagicMock()
         marker = _make_marker()
         mf = MarkerFile(markers=[marker])
         mock_result = RunResult(
             marker_name="test-marker",
-            experiments=1, kept=0, discarded=1, crashed=0,
-            final_metric=None, final_confidence=None,
-            final_status="active", branch=None, worktree_path=None,
+            experiments=1,
+            kept=0,
+            discarded=1,
+            crashed=0,
+            final_metric=None,
+            final_confidence=None,
+            final_status="active",
+            branch=None,
+            worktree_path=None,
         )
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(mf, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(mf, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", return_value=mock_result),
@@ -1825,6 +2177,7 @@ class TestPrivateRunRepoMarkers:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_repo_markers
+
         tracked1 = _make_tracked(repo_path="/tmp/repo1", marker_id="repo1:m1")
         tracked1.repo_name = "repo1"
         tracked2 = _make_tracked(repo_path="/tmp/repo2", marker_id="repo2:m2")
@@ -1833,20 +2186,27 @@ class TestPrivateRunRepoMarkers:
         ctx = MagicMock()
         with (
             patch("autoresearch.cli._run_single_marker") as mock_run,
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, _make_marker(), MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, _make_marker(), MarkerStatus.ACTIVE),
+            ),
         ):
-                _run_repo_markers(ctx, state, "repo1")
+            _run_repo_markers(ctx, state, "repo1")
         assert mock_run.call_count == 1
 
     def test_skips_non_active_in_repo(self):
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_repo_markers
+
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         ctx = MagicMock()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, _make_marker(), MarkerStatus.SKIP)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, _make_marker(), MarkerStatus.SKIP),
+            ),
             patch("autoresearch.cli._run_single_marker") as mock_run,
         ):
             _run_repo_markers(ctx, state, "fakerepo")
@@ -1858,6 +2218,7 @@ class TestPrivateActionAdd:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_add
+
         ctx = MagicMock()
         with patch("autoresearch.cli.find_marker_file", return_value=None):
             _action_add(ctx, tmp_path)
@@ -1866,9 +2227,13 @@ class TestPrivateActionAdd:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_add
+
         ctx = MagicMock()
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
             patch("autoresearch.cli.load_markers", side_effect=ValueError("bad")),
         ):
             _action_add(ctx, tmp_path)
@@ -1877,12 +2242,16 @@ class TestPrivateActionAdd:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_add
+
         ctx = MagicMock()
         marker = _make_marker()
         mf = MarkerFile(markers=[marker])
         tracked = _make_tracked()
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.cli.track_marker", return_value=tracked),
@@ -1896,6 +2265,7 @@ class TestPrivateActionDetach:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_detach_interactive
+
         ctx = MagicMock()
         state = AppState(markers=[])
         _action_detach_interactive(ctx, state)
@@ -1904,6 +2274,7 @@ class TestPrivateActionDetach:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_detach_interactive
+
         ctx = MagicMock()
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -1920,6 +2291,7 @@ class TestPrivateActionRunSelected:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_run_selected_interactive
+
         ctx = MagicMock()
         state = AppState(markers=[])
         _action_run_selected_interactive(ctx, state)
@@ -1928,6 +2300,7 @@ class TestPrivateActionRunSelected:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_run_selected_interactive
+
         ctx = MagicMock()
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -1944,6 +2317,7 @@ class TestPrivateActionRunRepo:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_run_repo_interactive
+
         ctx = MagicMock()
         state = AppState(markers=[])
         _action_run_repo_interactive(ctx, state)
@@ -1952,6 +2326,7 @@ class TestPrivateActionRunRepo:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _action_run_repo_interactive
+
         ctx = MagicMock()
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -1968,6 +2343,7 @@ class TestPrivateRepoMode:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _repo_mode
+
         ctx = MagicMock()
         state = AppState(markers=[])
         marker_file = tmp_path / ".autoresearch.yaml"
@@ -1978,6 +2354,7 @@ class TestPrivateRepoMode:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _repo_mode
+
         ctx = MagicMock()
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
@@ -1985,7 +2362,10 @@ class TestPrivateRepoMode:
         mf = MarkerFile(markers=[marker])
         with (
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli._resolve_marker_data", return_value=(mf, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(mf, marker, MarkerStatus.ACTIVE),
+            ),
         ):
             _repo_mode(ctx, state, tmp_path, tmp_path / ".autoresearch.yaml")
 
@@ -1993,6 +2373,7 @@ class TestPrivateRepoMode:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _repo_mode
+
         ctx = MagicMock()
         state = AppState(markers=[])
         marker = _make_marker()
@@ -2009,6 +2390,7 @@ class TestPrivateRepoMode:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _repo_mode
+
         ctx = MagicMock()
         state = AppState(markers=[])
         marker = _make_marker()
@@ -2025,6 +2407,7 @@ class TestInitCtxWhenNone:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _init_ctx
+
         ctx = MagicMock()
         ctx.obj = None
         _init_ctx(ctx)
@@ -2034,6 +2417,7 @@ class TestInitCtxWhenNone:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _init_ctx
+
         ctx = MagicMock()
         ctx.obj = {"key": "value"}
         _init_ctx(ctx)
@@ -2044,11 +2428,13 @@ class TestInitCtxWhenNone:
 # _home_mode
 # ---------------------------------------------------------------------------
 
+
 class TestHomeModePrivate:
     def test_home_mode_no_markers_no_output(self):
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _home_mode
+
         ctx = MagicMock()
         state = AppState(markers=[])
         _home_mode(ctx, state)  # should not raise
@@ -2057,12 +2443,16 @@ class TestHomeModePrivate:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _home_mode
+
         ctx = MagicMock()
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         marker = _make_marker()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli._render_marker_table"),
         ):
             _home_mode(ctx, state)
@@ -2071,11 +2461,14 @@ class TestHomeModePrivate:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _home_mode
+
         ctx = MagicMock()
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, None, None)),
+            patch(
+                "autoresearch.cli._resolve_marker_data", return_value=(None, None, None)
+            ),
             patch("autoresearch.cli._render_marker_table"),
         ):
             _home_mode(ctx, state)
@@ -2085,22 +2478,31 @@ class TestHomeModePrivate:
 # _show_status_interactive
 # ---------------------------------------------------------------------------
 
+
 class TestShowStatusInteractive:
     def test_prints_fields(self):
         from autoresearch.cli import _show_status_interactive
+
         tracked = _make_tracked()
         marker = _make_marker()
-        with patch("autoresearch.cli._format_tracked_json", return_value={"id": "r:m", "status": "active"}):
-            _show_status_interactive(tracked, marker, MarkerStatus.ACTIVE)  # no assertion, just no raise
+        with patch(
+            "autoresearch.cli._format_tracked_json",
+            return_value={"id": "r:m", "status": "active"},
+        ):
+            _show_status_interactive(
+                tracked, marker, MarkerStatus.ACTIVE
+            )  # no assertion, just no raise
 
 
 # ---------------------------------------------------------------------------
 # _show_results_interactive
 # ---------------------------------------------------------------------------
 
+
 class TestShowResultsInteractiveA:
     def test_no_results_prints_dim(self):
         from autoresearch.cli import _show_results_interactive
+
         tracked = _make_tracked()
         with patch("autoresearch.results.read_results", return_value=[]):
             _show_results_interactive(tracked)  # should not raise
@@ -2108,16 +2510,31 @@ class TestShowResultsInteractiveA:
     def test_with_results_renders_table(self):
         from autoresearch.cli import _show_results_interactive
         from autoresearch.results import ExperimentResult
+
         tracked = _make_tracked()
-        results = [ExperimentResult(commit="abc1234", metric=42.0, status="pass", description="test")]
+        results = [
+            ExperimentResult(
+                commit="abc1234", metric=42.0, status="pass", description="test"
+            )
+        ]
         with patch("autoresearch.results.read_results", return_value=results):
             _show_results_interactive(tracked)
 
     def test_with_confidence_value(self):
         from autoresearch.cli import _show_results_interactive
         from autoresearch.results import ExperimentResult
+
         tracked = _make_tracked()
-        results = [ExperimentResult(commit="abc1234", metric=99.0, guard="ok", status="pass", confidence="0.85", description="hi")]
+        results = [
+            ExperimentResult(
+                commit="abc1234",
+                metric=99.0,
+                guard="ok",
+                status="pass",
+                confidence="0.85",
+                description="hi",
+            )
+        ]
         with patch("autoresearch.results.read_results", return_value=results):
             _show_results_interactive(tracked)
 
@@ -2126,15 +2543,18 @@ class TestShowResultsInteractiveA:
 # _show_ideas_interactive
 # ---------------------------------------------------------------------------
 
+
 class TestShowIdeasInteractive:
     def test_no_ideas_prints_dim(self):
         from autoresearch.cli import _show_ideas_interactive
+
         tracked = _make_tracked()
         with patch("autoresearch.ideas.read_ideas", return_value="   "):
             _show_ideas_interactive(tracked)
 
     def test_with_ideas_prints_content(self):
         from autoresearch.cli import _show_ideas_interactive
+
         tracked = _make_tracked()
         with patch("autoresearch.ideas.read_ideas", return_value="idea: try X"):
             _show_ideas_interactive(tracked)
@@ -2144,15 +2564,18 @@ class TestShowIdeasInteractive:
 # _show_confidence_interactive
 # ---------------------------------------------------------------------------
 
+
 class TestShowConfidenceInteractive:
     def test_no_baseline_prints_dim(self):
         from autoresearch.cli import _show_confidence_interactive
+
         tracked = _make_tracked()  # no baseline/current by default
         with patch("autoresearch.results.read_results", return_value=[]):
             _show_confidence_interactive(tracked)
 
     def test_with_baseline_and_current(self):
         from autoresearch.cli import _show_confidence_interactive
+
         tracked = _make_tracked(baseline=10.0, current=50.0)
         with (
             patch("autoresearch.results.read_results", return_value=[]),
@@ -2164,6 +2587,7 @@ class TestShowConfidenceInteractive:
 
     def test_with_zero_confidence(self):
         from autoresearch.cli import _show_confidence_interactive
+
         tracked = _make_tracked(baseline=10.0, current=50.0)
         with (
             patch("autoresearch.results.read_results", return_value=[]),
@@ -2178,11 +2602,13 @@ class TestShowConfidenceInteractive:
 # _finalize_interactive
 # ---------------------------------------------------------------------------
 
+
 class TestFinalizeInteractive:
     def test_no_results_returns_early(self):
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _finalize_interactive
+
         ctx = MagicMock()
         tracked = _make_tracked()
         with patch("autoresearch.results.read_results", return_value=[]):
@@ -2193,9 +2619,12 @@ class TestFinalizeInteractive:
 
         from autoresearch.cli import _finalize_interactive
         from autoresearch.results import ExperimentResult
+
         ctx = MagicMock()
         tracked = _make_tracked()
-        results = [ExperimentResult(commit="abc", metric=1.0, status="pass", description="d")]
+        results = [
+            ExperimentResult(commit="abc", metric=1.0, status="pass", description="d")
+        ]
         with (
             patch("autoresearch.results.read_results", return_value=results),
             patch("autoresearch.finalize.finalize_marker", return_value=[]),
@@ -2207,9 +2636,12 @@ class TestFinalizeInteractive:
 
         from autoresearch.cli import _finalize_interactive
         from autoresearch.results import ExperimentResult
+
         ctx = MagicMock()
         tracked = _make_tracked()
-        results = [ExperimentResult(commit="abc", metric=1.0, status="pass", description="d")]
+        results = [
+            ExperimentResult(commit="abc", metric=1.0, status="pass", description="d")
+        ]
         branches = [{"branch": "ar/x", "description": "improvement"}]
         with (
             patch("autoresearch.results.read_results", return_value=results),
@@ -2222,11 +2654,13 @@ class TestFinalizeInteractive:
 # _merge_interactive
 # ---------------------------------------------------------------------------
 
+
 class TestMergeInteractive:
     def test_no_branch_prints_dim(self):
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _merge_interactive
+
         ctx = MagicMock()
         tracked = _make_tracked()  # branch=None by default
         _merge_interactive(ctx, tracked)
@@ -2235,6 +2669,7 @@ class TestMergeInteractive:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _merge_interactive
+
         ctx = MagicMock()
         tracked = _make_tracked(branch="ar/test")
         with (
@@ -2247,11 +2682,15 @@ class TestMergeInteractive:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _merge_interactive
+
         ctx = MagicMock()
         tracked = _make_tracked(branch="ar/test")
         with (
             patch("rich.prompt.Prompt.ask", return_value="main"),
-            patch("autoresearch.finalize.merge_finalized", side_effect=RuntimeError("conflict")),
+            patch(
+                "autoresearch.finalize.merge_finalized",
+                side_effect=RuntimeError("conflict"),
+            ),
         ):
             _merge_interactive(ctx, tracked)
 
@@ -2260,14 +2699,18 @@ class TestMergeInteractive:
 # _run_single_marker
 # ---------------------------------------------------------------------------
 
+
 class TestRunSingleMarker:
     def test_no_marker_config_prints_error(self):
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_single_marker
+
         ctx = MagicMock()
         tracked = _make_tracked()
-        with patch("autoresearch.cli._resolve_marker_data", return_value=(None, None, None)):
+        with patch(
+            "autoresearch.cli._resolve_marker_data", return_value=(None, None, None)
+        ):
             _run_single_marker(ctx, tracked)
 
     def test_run_success_prints_summary(self):
@@ -2275,6 +2718,7 @@ class TestRunSingleMarker:
 
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import RunResult
+
         ctx = MagicMock()
         tracked = _make_tracked()
         marker = _make_marker()
@@ -2291,7 +2735,10 @@ class TestRunSingleMarker:
             worktree_path="/tmp/wt",
         )
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.engine.get_agent_runner", return_value=MagicMock()),
             patch("autoresearch.engine.run_marker", return_value=run_result),
@@ -2303,11 +2750,15 @@ class TestRunSingleMarker:
 
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import EngineError
+
         ctx = MagicMock()
         tracked = _make_tracked()
         marker = _make_marker()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.engine.get_agent_runner", return_value=MagicMock()),
             patch("autoresearch.engine.run_marker", side_effect=EngineError("fail")),
@@ -2319,6 +2770,7 @@ class TestRunSingleMarker:
 
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import RunResult
+
         ctx = MagicMock()
         tracked = _make_tracked()
         marker = _make_marker()
@@ -2335,7 +2787,10 @@ class TestRunSingleMarker:
             worktree_path="/tmp/wt",
         )
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli.load_state", return_value=AppState()),
             patch("autoresearch.engine.get_agent_runner", return_value=MagicMock()),
             patch("autoresearch.engine.run_marker", return_value=run_result),
@@ -2347,11 +2802,13 @@ class TestRunSingleMarker:
 # _run_repo_markers
 # ---------------------------------------------------------------------------
 
+
 class TestRunRepoMarkersPrivate:
     def test_skips_different_repo(self):
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_repo_markers
+
         ctx = MagicMock()
         tracked = _make_tracked(marker_id="otherrepo:m", repo_path="/tmp/other")
         tracked.repo_name = "otherrepo"
@@ -2364,11 +2821,15 @@ class TestRunRepoMarkersPrivate:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_repo_markers
+
         ctx = MagicMock()
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, _make_marker(), MarkerStatus.SKIP)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, _make_marker(), MarkerStatus.SKIP),
+            ),
             patch("autoresearch.cli._run_single_marker") as mock_run,
         ):
             _run_repo_markers(ctx, state, "fakerepo")
@@ -2378,11 +2839,15 @@ class TestRunRepoMarkersPrivate:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_repo_markers
+
         ctx = MagicMock()
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, _make_marker(), MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, _make_marker(), MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli._run_single_marker") as mock_run,
         ):
             _run_repo_markers(ctx, state, "fakerepo")
@@ -2393,15 +2858,18 @@ class TestRunRepoMarkersPrivate:
 # _edit_config
 # ---------------------------------------------------------------------------
 
+
 class TestEditConfigPrivate:
     def test_no_marker_file_prints_error(self):
         from autoresearch.cli import _edit_config
+
         tracked = _make_tracked()
         with patch("autoresearch.cli.find_marker_file", return_value=None):
             _edit_config(tracked)  # should not raise
 
     def test_with_marker_file_runs_editor(self, tmp_path):
         from autoresearch.cli import _edit_config
+
         tracked = _make_tracked(repo_path=str(tmp_path))
         mf = tmp_path / ".autoresearch.yaml"
         mf.write_text("markers: []")
@@ -2417,9 +2885,11 @@ class TestEditConfigPrivate:
 # _show_branch
 # ---------------------------------------------------------------------------
 
+
 class TestShowBranchPrivate:
     def test_no_branch_prints_dim(self):
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked()  # branch=None
         _show_branch(tracked)
 
@@ -2427,6 +2897,7 @@ class TestShowBranchPrivate:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked(branch="ar/test")
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -2438,6 +2909,7 @@ class TestShowBranchPrivate:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked(branch="ar/test")
         mock_result = MagicMock()
         mock_result.returncode = 1
@@ -2447,6 +2919,7 @@ class TestShowBranchPrivate:
 
     def test_branch_subprocess_exception(self):
         from autoresearch.cli import _show_branch
+
         tracked = _make_tracked(branch="ar/test")
         with patch("subprocess.run", side_effect=OSError("no git")):
             _show_branch(tracked)
@@ -2456,9 +2929,11 @@ class TestShowBranchPrivate:
 # _format_tracked_json edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestFormatTrackedJsonEdgeCases:
     def test_none_marker_returns_partial(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         result = _format_tracked_json(tracked, None, None)
         assert result["id"] == tracked.id
@@ -2466,6 +2941,7 @@ class TestFormatTrackedJsonEdgeCases:
 
     def test_with_baseline_and_current(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked(baseline=10.0, current=55.0)
         marker = _make_marker()
         result = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2474,6 +2950,7 @@ class TestFormatTrackedJsonEdgeCases:
 
     def test_with_paused_status(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         marker = _make_marker(status=MarkerStatus.PAUSED)
         result = _format_tracked_json(tracked, marker, MarkerStatus.PAUSED)
@@ -2488,6 +2965,7 @@ class TestFormatTrackedJsonEdgeCases:
 class TestFormatTrackedJsonMoreFields:
     def test_id_present(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked(marker_id="myrepo:my-marker")
         marker = _make_marker()
         result = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2495,6 +2973,7 @@ class TestFormatTrackedJsonMoreFields:
 
     def test_repo_present(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked(repo_path="/home/user/myproject")
         marker = _make_marker()
         result = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2502,6 +2981,7 @@ class TestFormatTrackedJsonMoreFields:
 
     def test_marker_name_present(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked(marker_name="coverage-tracker")
         marker = _make_marker(name="coverage-tracker")
         result = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2509,6 +2989,7 @@ class TestFormatTrackedJsonMoreFields:
 
     def test_skip_status(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         marker = _make_marker(status=MarkerStatus.SKIP)
         result = _format_tracked_json(tracked, marker, MarkerStatus.SKIP)
@@ -2516,6 +2997,7 @@ class TestFormatTrackedJsonMoreFields:
 
     def test_no_baseline_current_fields_default(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         marker = _make_marker()
         result = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2527,6 +3009,7 @@ class TestFormatTrackedJsonMoreFields:
 class TestPrivateShowStatusEdgeCases:
     def test_active_status_prints_active(self):
         from autoresearch.cli import _show_status_interactive
+
         tracked = _make_tracked()
         marker = _make_marker()
         # Should not raise
@@ -2534,12 +3017,14 @@ class TestPrivateShowStatusEdgeCases:
 
     def test_paused_status_prints(self):
         from autoresearch.cli import _show_status_interactive
+
         tracked = _make_tracked()
         marker = _make_marker(status=MarkerStatus.PAUSED)
         _show_status_interactive(tracked, marker, MarkerStatus.PAUSED)
 
     def test_skip_status_prints(self):
         from autoresearch.cli import _show_status_interactive
+
         tracked = _make_tracked()
         marker = _make_marker(status=MarkerStatus.SKIP)
         _show_status_interactive(tracked, marker, MarkerStatus.SKIP)
@@ -2550,6 +3035,7 @@ class TestPrivateRunSingleMarkerEdgeCases:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_single_marker
+
         ctx = MagicMock()
         tracked = _make_tracked()
         with (
@@ -2561,10 +3047,14 @@ class TestPrivateRunSingleMarkerEdgeCases:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _run_single_marker
+
         ctx = MagicMock()
         tracked = _make_tracked()
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/fake/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/fake/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", side_effect=ValueError("bad yaml")),
         ):
             _run_single_marker(ctx, tracked)
@@ -2573,6 +3063,7 @@ class TestPrivateRunSingleMarkerEdgeCases:
 class TestHeadlessRunEdgeCases:
     def test_run_headless_with_extra_options(self, tmp_path):
         from unittest.mock import MagicMock
+
         state_path = tmp_path / "state.json"
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -2592,8 +3083,16 @@ class TestHeadlessRunEdgeCases:
         ):
             result = runner.invoke(
                 app,
-                ["run", "--headless", "--state-path", str(state_path),
-                 "--id", tracked.id, "--repo-path", tracked.repo_path]
+                [
+                    "run",
+                    "--headless",
+                    "--state-path",
+                    str(state_path),
+                    "--id",
+                    tracked.id,
+                    "--repo-path",
+                    tracked.repo_path,
+                ],
             )
         # Should not crash (0=success, 1=error, 2=usage error)
         assert result.exit_code in (0, 1, 2)
@@ -2604,13 +3103,17 @@ class TestHomeModeWithMultipleMarkers:
         from unittest.mock import MagicMock
 
         from autoresearch.cli import _home_mode
+
         ctx = MagicMock()
         t1 = _make_tracked(marker_id="repo1:marker1", marker_name="marker1")
         t2 = _make_tracked(marker_id="repo2:marker2", marker_name="marker2")
         state = AppState(markers=[t1, t2])
         marker = _make_marker()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.cli._render_marker_table"),
         ):
             _home_mode(ctx, state)  # Should not raise
@@ -2620,8 +3123,10 @@ class TestHomeModeWithMultipleMarkers:
 # Additional headless edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessListUnknownMarker:
     """When _resolve_marker_data returns nones, list still includes the tracked entry."""
+
     def test_unresolvable_marker_still_listed(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -2649,6 +3154,7 @@ class TestHeadlessListUnknownMarker:
 
 class TestHeadlessStatusExtended:
     """status_cmd includes description, direction, target_metric when marker resolved."""
+
     def test_extended_fields_present(self):
         tracked = _make_tracked()
         marker = _make_marker()
@@ -2657,10 +3163,15 @@ class TestHeadlessStatusExtended:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
-            result = runner.invoke(app, ["--headless", "status", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "--marker", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -2676,7 +3187,9 @@ class TestHeadlessStatusExtended:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "status", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "--marker", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -2686,6 +3199,7 @@ class TestHeadlessStatusExtended:
 
 class TestHeadlessSkipUnskipCycle:
     """Test skip → unskip cycle via headless."""
+
     def test_skip_then_unskip(self, tmp_path):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -2694,7 +3208,9 @@ class TestHeadlessSkipUnskipCycle:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result1 = runner.invoke(app, ["--headless", "skip", "--marker", "fakerepo:test-marker"])
+            result1 = runner.invoke(
+                app, ["--headless", "skip", "--marker", "fakerepo:test-marker"]
+            )
         assert result1.exit_code == 0
         d1 = json.loads(result1.stdout)
         assert d1["data"]["action"] == "skipped"
@@ -2708,13 +3224,16 @@ class TestHeadlessPauseResumeCycle:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         d = json.loads(result.output)
         assert d["data"]["action"] == "paused"
 
     def test_resume_paused_marker(self):
         from autoresearch.marker import MarkerStatus as MS
+
         tracked = _make_tracked()
         tracked.status_override = MS.PAUSED
         state = AppState(markers=[tracked])
@@ -2722,7 +3241,9 @@ class TestHeadlessPauseResumeCycle:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         d = json.loads(result.output)
         assert d["data"]["action"] == "resumed"
@@ -2736,7 +3257,9 @@ class TestHeadlessDetachEdgeCases:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["data"]["detached"] == "fakerepo:test-marker"
@@ -2759,7 +3282,9 @@ class TestHeadlessConfidenceEdgeCases:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"]
+            )
 
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -2773,7 +3298,9 @@ class TestHeadlessConfidenceEdgeCases:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["data"]["confidence_score"] is None
@@ -2782,6 +3309,7 @@ class TestHeadlessConfidenceEdgeCases:
 class TestHeadlessRunRepo:
     def test_run_repo_engine_error_in_results(self):
         from autoresearch.engine import EngineError
+
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         marker = _make_marker()
@@ -2789,9 +3317,15 @@ class TestHeadlessRunRepo:
 
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.get_effective_status", return_value=MarkerStatus.ACTIVE),
+            patch(
+                "autoresearch.cli.get_effective_status",
+                return_value=MarkerStatus.ACTIVE,
+            ),
             patch("autoresearch.engine.get_agent_runner"),
             patch("autoresearch.engine.run_marker", side_effect=EngineError("bad")),
         ):
@@ -2816,7 +3350,10 @@ class TestNonHeadlessListMessages:
         mf = MarkerFile(markers=[marker])
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             result = runner.invoke(app, ["list"])
@@ -2840,7 +3377,9 @@ class TestHeadlessIdeasEdgeCases:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.ideas.read_ideas", return_value="some ideas here"),
         ):
-            result = runner.invoke(app, ["--headless", "ideas", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert "ideas" in data["data"]
@@ -2850,18 +3389,32 @@ class TestHeadlessIdeasEdgeCases:
 # _format_tracked_json — field validation
 # ---------------------------------------------------------------------------
 
+
 class TestFormatTrackedJson:
     def test_all_keys_present(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked(baseline=5.0, current=8.0)
         marker = _make_marker()
         d = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
-        for key in ("id", "repo", "marker", "status", "last_run",
-                    "experiments", "kept", "discarded", "baseline", "current", "branch"):
+        for key in (
+            "id",
+            "repo",
+            "marker",
+            "status",
+            "last_run",
+            "experiments",
+            "kept",
+            "discarded",
+            "baseline",
+            "current",
+            "branch",
+        ):
             assert key in d
 
     def test_status_value_when_effective_status_none(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         marker = _make_marker()
         d = _format_tracked_json(tracked, marker, None)
@@ -2869,6 +3422,7 @@ class TestFormatTrackedJson:
 
     def test_status_uses_effective_status_value(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         marker = _make_marker()
         d = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2876,6 +3430,7 @@ class TestFormatTrackedJson:
 
     def test_baseline_and_current_stored(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked(baseline=10.0, current=15.0)
         marker = _make_marker()
         d = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2884,6 +3439,7 @@ class TestFormatTrackedJson:
 
     def test_repo_and_marker_names(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked(repo_path="/tmp/myrepo", marker_name="my-metric")
         marker = _make_marker(name="my-metric")
         d = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -2895,9 +3451,11 @@ class TestFormatTrackedJson:
 # _resolve_marker_data — edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestResolveMarkerData:
     def test_no_marker_file_returns_nones(self):
         from autoresearch.cli import _resolve_marker_data
+
         tracked = _make_tracked()
         with patch("autoresearch.cli.find_marker_file", return_value=None):
             mf, m, eff = _resolve_marker_data(tracked)
@@ -2907,20 +3465,30 @@ class TestResolveMarkerData:
 
     def test_load_markers_exception_returns_nones(self):
         from autoresearch.cli import _resolve_marker_data
+
         tracked = _make_tracked()
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fake/.autoresearch.yaml")),
-            patch("autoresearch.cli.load_markers", side_effect=Exception("parse error")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fake/.autoresearch.yaml"),
+            ),
+            patch(
+                "autoresearch.cli.load_markers", side_effect=Exception("parse error")
+            ),
         ):
             mf, m, eff = _resolve_marker_data(tracked)
         assert mf is None and m is None and eff is None
 
     def test_marker_not_in_file_returns_nones(self):
         from autoresearch.cli import _resolve_marker_data
+
         tracked = _make_tracked()
         mf = MarkerFile(markers=[])
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fake/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fake/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             _mf_out, m, eff = _resolve_marker_data(tracked)
@@ -2928,11 +3496,15 @@ class TestResolveMarkerData:
 
     def test_valid_marker_returns_data(self):
         from autoresearch.cli import _resolve_marker_data
+
         tracked = _make_tracked()
         marker = _make_marker()
         mf = MarkerFile(markers=[marker])
         with (
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fake/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fake/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
             _mf_out, m, eff = _resolve_marker_data(tracked)
@@ -2943,6 +3515,7 @@ class TestResolveMarkerData:
 # ---------------------------------------------------------------------------
 # Headless list — missing marker file produces unknown status
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessListMissingMarkerFile:
     def test_tracked_with_missing_file_shows_unknown(self):
@@ -2964,6 +3537,7 @@ class TestHeadlessListMissingMarkerFile:
 # Headless confidence — various baselines
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessConfidenceValues:
     def test_baseline_equals_current_low_confidence(self):
         tracked = _make_tracked(baseline=10.0, current=10.0)
@@ -2972,7 +3546,9 @@ class TestHeadlessConfidenceValues:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -2984,13 +3560,16 @@ class TestHeadlessConfidenceValues:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
 # ---------------------------------------------------------------------------
 # Headless status — various status values
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessStatusValues:
     def test_paused_marker_shows_paused_status(self):
@@ -3000,10 +3579,15 @@ class TestHeadlessStatusValues:
         mf = MarkerFile(markers=[marker])
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
-            result = runner.invoke(app, ["--headless", "status", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -3015,10 +3599,15 @@ class TestHeadlessStatusValues:
         mf = MarkerFile(markers=[marker])
         with (
             patch("autoresearch.cli.load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
-            result = runner.invoke(app, ["--headless", "status", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
@@ -3026,21 +3615,31 @@ class TestHeadlessStatusValues:
 # Headless results — multiple results
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessResultsMultiple:
     def test_multiple_results_returned(self):
         from autoresearch.results import ExperimentResult
+
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         exp_results = [
-            ExperimentResult(commit=f"abc{i}", metric=float(i), guard="pass",
-                             status="keep", confidence="1.0", description=f"exp {i}")
+            ExperimentResult(
+                commit=f"abc{i}",
+                metric=float(i),
+                guard="pass",
+                status="keep",
+                confidence="1.0",
+                description=f"exp {i}",
+            )
             for i in range(5)
         ]
         with (
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=exp_results),
         ):
-            result = runner.invoke(app, ["--headless", "results", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert len(data["data"]) == 5
@@ -3049,6 +3648,7 @@ class TestHeadlessResultsMultiple:
 # ---------------------------------------------------------------------------
 # _render_marker_table — non-headless list
 # ---------------------------------------------------------------------------
+
 
 class TestNonHeadlessListWithTracked:
     def test_list_with_one_tracked_marker(self, tmp_path):
@@ -3062,7 +3662,10 @@ class TestNonHeadlessListWithTracked:
         with (
             patch("autoresearch.cli._load_state", return_value=state),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
         ):
             result = runner.invoke(app, ["list"])
         assert result.exit_code == 0
@@ -3078,26 +3681,39 @@ class TestNonHeadlessListWithTracked:
 # Headless confidence — more edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessConfidenceMoreEdgeCases:
     def test_confidence_zero_baseline_zero_current(self, tmp_path):
         from autoresearch.results import ExperimentResult
+
         state = AppState(markers=[_make_tracked(baseline=0.0, current_best=0.0)])
         marker = _make_marker()
         mf = MarkerFile(markers=[marker])
         results = [
-            ExperimentResult(commit="a1", metric=0.0, guard="pass", status="keep",
-                             confidence="--", description="d"),
+            ExperimentResult(
+                commit="a1",
+                metric=0.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="d",
+            ),
         ]
         with (
             patch("autoresearch.cli._load_state", return_value=state),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
             patch("autoresearch.metrics.compute_confidence", return_value=0.0),
             patch("autoresearch.metrics.confidence_label", return_value="low"),
             patch("autoresearch.results.read_results", return_value=results),
             patch("autoresearch.results.get_kept_metrics", return_value=[0.0]),
         ):
-            result = runner.invoke(app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data.get("status") == "ok"
@@ -3107,6 +3723,7 @@ class TestHeadlessConfidenceMoreEdgeCases:
 # Headless status — edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessStatusEdgeCases:
     def test_status_active_marker(self, tmp_path):
         state = AppState(markers=[_make_tracked()])
@@ -3115,9 +3732,14 @@ class TestHeadlessStatusEdgeCases:
         with (
             patch("autoresearch.cli._load_state", return_value=state),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.find_marker_file", return_value=tmp_path / ".autoresearch.yaml"),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=tmp_path / ".autoresearch.yaml",
+            ),
         ):
-            result = runner.invoke(app, ["--headless", "status", "--marker", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "--marker", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data.get("status") == "ok"
@@ -3126,7 +3748,9 @@ class TestHeadlessStatusEdgeCases:
     def test_status_unknown_marker_returns_error(self, tmp_path):
         state = AppState(markers=[])
         with patch("autoresearch.cli._load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "--marker", "unknown:missing"])
+            result = runner.invoke(
+                app, ["--headless", "status", "--marker", "unknown:missing"]
+            )
         data = json.loads(result.output)
         assert data.get("status") == "error"
 
@@ -3134,6 +3758,7 @@ class TestHeadlessStatusEdgeCases:
 # ---------------------------------------------------------------------------
 # Headless add — basic flow
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessAddBasic:
     def test_add_new_marker(self, tmp_path):
@@ -3161,15 +3786,18 @@ class TestHeadlessAddBasic:
 # _format_tracked_json — None effective_status
 # ---------------------------------------------------------------------------
 
+
 class TestFormatTrackedJsonNoneStatus:
     def test_none_effective_status_gives_unknown(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         result = _format_tracked_json(tracked, None, None)
         assert result["status"] in (None, "unknown", "active", "")
 
     def test_active_effective_status(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         marker = _make_marker()
         result = _format_tracked_json(tracked, marker, MarkerStatus.ACTIVE)
@@ -3177,6 +3805,7 @@ class TestFormatTrackedJsonNoneStatus:
 
     def test_skip_effective_status(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = _make_tracked()
         marker = _make_marker()
         result = _format_tracked_json(tracked, marker, MarkerStatus.SKIP)
@@ -3186,6 +3815,7 @@ class TestFormatTrackedJsonNoneStatus:
 # ---------------------------------------------------------------------------
 # Headless detach — already detached
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessDetachAlreadyGone:
     def test_detach_when_not_tracked(self):
@@ -3202,6 +3832,7 @@ class TestHeadlessDetachAlreadyGone:
 # Headless skip — marker not tracked
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessSkipNotTracked:
     def test_skip_untracked_marker_returns_error(self):
         state = AppState(markers=[])
@@ -3216,6 +3847,7 @@ class TestHeadlessSkipNotTracked:
 # ---------------------------------------------------------------------------
 # Headless pause — marker not tracked
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessPauseNotTracked:
     def test_pause_untracked_marker_returns_error(self):
@@ -3232,9 +3864,11 @@ class TestHeadlessPauseNotTracked:
 # daemon_status headless — with scheduled markers
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonStatusHeadlessScheduled:
     def _make_tracked_with_schedule(self, tmp_path, marker_name="my-marker"):
         from autoresearch.state import TrackedMarker
+
         return TrackedMarker(
             id=f"repo:{marker_name}",
             repo_path=str(tmp_path),
@@ -3295,7 +3929,9 @@ class TestDaemonStatusHeadlessScheduled:
             description="test",
             status=MarkerStatus.ACTIVE,
             target=Target(mutable=[], immutable=[]),
-            metric=Metric(command="echo", extract="", direction=MetricDirection.HIGHER, baseline=0),
+            metric=Metric(
+                command="echo", extract="", direction=MetricDirection.HIGHER, baseline=0
+            ),
             escalation=Escalation(),
             schedule=Schedule(type="overnight"),
             results=ResultsConfig(),
@@ -3306,8 +3942,13 @@ class TestDaemonStatusHeadlessScheduled:
             patch("autoresearch.daemon.read_pid", return_value=None),
             patch("autoresearch.daemon.check_stale_pid"),
             patch("autoresearch.cli._load_state", return_value=state),
-            patch("autoresearch.cli._resolve_marker_data", return_value=(mf, marker, MarkerStatus.ACTIVE)),
-            patch("autoresearch.daemon._resolve_cron_expression", return_value="0 1 * * *"),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(mf, marker, MarkerStatus.ACTIVE),
+            ),
+            patch(
+                "autoresearch.daemon._resolve_cron_expression", return_value="0 1 * * *"
+            ),
         ):
             result = runner.invoke(app, ["--headless", "daemon", "status"])
         assert result.exit_code == 0
@@ -3319,16 +3960,20 @@ class TestDaemonStatusHeadlessScheduled:
 # finalize_cmd headless — marker not found
 # ---------------------------------------------------------------------------
 
+
 class TestFinalizeCmdHeadless:
     def test_headless_finalize_marker_not_found(self):
         with patch("autoresearch.cli._load_state", return_value=AppState()):
-            result = runner.invoke(app, ["--headless", "finalize", "-m", "repo:missing"])
+            result = runner.invoke(
+                app, ["--headless", "finalize", "-m", "repo:missing"]
+            )
         assert result.exit_code == 1
         data = json.loads(result.output)
         assert data["status"] == "error"
 
     def test_headless_finalize_no_branches_returns_empty_list(self, tmp_path):
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path=str(tmp_path),
@@ -3348,6 +3993,7 @@ class TestFinalizeCmdHeadless:
 
     def test_headless_finalize_with_branches(self, tmp_path):
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path=str(tmp_path),
@@ -3372,9 +4018,11 @@ class TestFinalizeCmdHeadless:
 # merge_cmd headless — no branch
 # ---------------------------------------------------------------------------
 
+
 class TestMergeCmdHeadlessNoBranch:
     def test_headless_merge_no_branch_returns_error(self, tmp_path):
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path=str(tmp_path),
@@ -3391,6 +4039,7 @@ class TestMergeCmdHeadlessNoBranch:
 
     def test_headless_merge_with_explicit_branch(self, tmp_path):
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path=str(tmp_path),
@@ -3402,10 +4051,19 @@ class TestMergeCmdHeadlessNoBranch:
             patch("autoresearch.cli._load_state", return_value=state),
             patch("autoresearch.finalize.merge_finalized", return_value="abc1234567"),
         ):
-            result = runner.invoke(app, [
-                "--headless", "merge", "-m", "repo:m",
-                "--branch", "custom-branch", "--target", "dev"
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "--headless",
+                    "merge",
+                    "-m",
+                    "repo:m",
+                    "--branch",
+                    "custom-branch",
+                    "--target",
+                    "dev",
+                ],
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["data"]["merged"] == "custom-branch"
@@ -3416,10 +4074,12 @@ class TestMergeCmdHeadlessNoBranch:
 # _show_confidence_interactive — missing baseline/current
 # ---------------------------------------------------------------------------
 
+
 class TestShowConfidenceInteractiveEdgeCases:
     def test_no_baseline_prints_dim(self):
         from autoresearch.cli import _show_confidence_interactive
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path="/tmp",
@@ -3438,6 +4098,7 @@ class TestShowConfidenceInteractiveEdgeCases:
     def test_zero_confidence_shows_not_enough_data(self):
         from autoresearch.cli import _show_confidence_interactive
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path="/tmp",
@@ -3459,9 +4120,11 @@ class TestShowConfidenceInteractiveEdgeCases:
 # _format_tracked_json — field completeness
 # ---------------------------------------------------------------------------
 
+
 class TestFormatTrackedJsonFieldsComplete:
     def _make_tracked_full(self):
         from autoresearch.state import TrackedMarker
+
         return TrackedMarker(
             id="myrepo:mymarker",
             repo_path="/tmp/myrepo",
@@ -3478,6 +4141,7 @@ class TestFormatTrackedJsonFieldsComplete:
 
     def test_branch_field_present(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = self._make_tracked_full()
         data = _format_tracked_json(tracked, None, None)
         assert "branch" in data
@@ -3485,12 +4149,14 @@ class TestFormatTrackedJsonFieldsComplete:
 
     def test_experiments_field_correct(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = self._make_tracked_full()
         data = _format_tracked_json(tracked, None, None)
         assert data["experiments"] == 5
 
     def test_kept_discarded_fields(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = self._make_tracked_full()
         data = _format_tracked_json(tracked, None, None)
         assert data["kept"] == 2
@@ -3498,6 +4164,7 @@ class TestFormatTrackedJsonFieldsComplete:
 
     def test_last_run_field(self):
         from autoresearch.cli import _format_tracked_json
+
         tracked = self._make_tracked_full()
         data = _format_tracked_json(tracked, None, None)
         assert data["last_run"] == "2026-01-15T12:00:00Z"
@@ -3507,10 +4174,12 @@ class TestFormatTrackedJsonFieldsComplete:
 # _show_results_interactive — results table rendered
 # ---------------------------------------------------------------------------
 
+
 class TestShowResultsInteractive:
     def test_no_results_prints_dim(self):
         from autoresearch.cli import _show_results_interactive
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path="/tmp",
@@ -3524,6 +4193,7 @@ class TestShowResultsInteractive:
         from autoresearch.cli import _show_results_interactive
         from autoresearch.results import ExperimentResult
         from autoresearch.state import TrackedMarker
+
         tracked = TrackedMarker(
             id="repo:m",
             repo_path=str(tmp_path),
@@ -3547,6 +4217,7 @@ class TestShowResultsInteractive:
 # ---------------------------------------------------------------------------
 # run_cmd — model override sets on marker
 # ---------------------------------------------------------------------------
+
 
 class TestRunCmdModelOverride:
     def test_model_override_applied(self, tmp_path):
@@ -3578,7 +4249,9 @@ class TestRunCmdModelOverride:
             description="test",
             status=MarkerStatus.ACTIVE,
             target=Target(mutable=[], immutable=[]),
-            metric=Metric(command="echo", extract="", direction=MetricDirection.HIGHER, baseline=0),
+            metric=Metric(
+                command="echo", extract="", direction=MetricDirection.HIGHER, baseline=0
+            ),
             escalation=Escalation(),
             schedule=Schedule(),
             results=ResultsConfig(),
@@ -3597,11 +4270,16 @@ class TestRunCmdModelOverride:
 
         with (
             patch("autoresearch.cli._load_state", return_value=state),
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, marker, MarkerStatus.ACTIVE)),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(None, marker, MarkerStatus.ACTIVE),
+            ),
             patch("autoresearch.engine.get_agent_runner", return_value=MagicMock()),
             patch("autoresearch.engine.run_marker", return_value=run_result),
         ):
-            result = runner.invoke(app, ["--headless", "run", "-m", "repo:m", "--model", "opus"])
+            result = runner.invoke(
+                app, ["--headless", "run", "-m", "repo:m", "--model", "opus"]
+            )
         assert result.exit_code == 0
         assert marker.agent.model == "opus"
 
@@ -3609,6 +4287,7 @@ class TestRunCmdModelOverride:
 # ---------------------------------------------------------------------------
 # daemon_logs — headless follow exits 2
 # ---------------------------------------------------------------------------
+
 
 class TestDaemonLogsHeadlessFollow:
     def test_headless_follow_exits_2(self, tmp_path):
@@ -3635,11 +4314,14 @@ class TestDaemonLogsHeadlessFollow:
 # init_cmd — headless and non-headless paths
 # ---------------------------------------------------------------------------
 
+
 class TestInitCmdHeadless:
     def test_headless_config_created(self, tmp_path):
         ar_dir = tmp_path / ".autoresearch"
         with (
-            patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir),
+            patch(
+                "autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir
+            ),
             patch("autoresearch.marker.CONFIG_DIR", ".autoresearch"),
             patch("autoresearch.marker.CONFIG_FILENAME", "config.yaml"),
         ):
@@ -3656,7 +4338,9 @@ class TestInitCmdHeadless:
         ar_dir.mkdir(parents=True)
         config_file = ar_dir / "config.yaml"
         config_file.write_text("markers: []")
-        with patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir):
+        with patch(
+            "autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir
+        ):
             result = runner.invoke(app, ["--headless", "init", "--path", str(tmp_path)])
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -3664,8 +4348,12 @@ class TestInitCmdHeadless:
 
     def test_non_headless_init_prints_success(self, tmp_path):
         ar_dir = tmp_path / ".autoresearch"
-        with patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir):
-            result = runner.invoke(app, ["init", "--path", str(tmp_path), "--no-claude"])
+        with patch(
+            "autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir
+        ):
+            result = runner.invoke(
+                app, ["init", "--path", str(tmp_path), "--no-claude"]
+            )
         assert result.exit_code == 0
         assert "Initialized" in result.output or "Synced" in result.output
 
@@ -3673,6 +4361,7 @@ class TestInitCmdHeadless:
 # ---------------------------------------------------------------------------
 # results_cmd — headless with actual results
 # ---------------------------------------------------------------------------
+
 
 class TestResultsCmdHeadlessWithResults:
     def test_headless_results_with_data(self):
@@ -3738,6 +4427,7 @@ class TestResultsCmdHeadlessWithResults:
 # ideas_cmd — headless with content
 # ---------------------------------------------------------------------------
 
+
 class TestIdeasCmdHeadlessWithContent:
     def test_headless_ideas_returns_content(self):
         from autoresearch.state import TrackedMarker
@@ -3751,7 +4441,10 @@ class TestIdeasCmdHeadlessWithContent:
         state = AppState(markers=[tracked])
         with (
             patch("autoresearch.cli._load_state", return_value=state),
-            patch("autoresearch.ideas.read_ideas", return_value="## Ideas\n- Try X\n- Try Y"),
+            patch(
+                "autoresearch.ideas.read_ideas",
+                return_value="## Ideas\n- Try X\n- Try Y",
+            ),
         ):
             result = runner.invoke(app, ["--headless", "ideas", "-m", "repo:m"])
         assert result.exit_code == 0
@@ -3799,9 +4492,11 @@ class TestIdeasCmdHeadlessWithContent:
 # _render_marker_table — unknown status value
 # ---------------------------------------------------------------------------
 
+
 class TestRenderMarkerTableUnknownStatus:
     def test_unknown_status_renders_as_string(self):
         from autoresearch.cli import _render_marker_table
+
         markers_data = [
             {
                 "id": "repo:m",
@@ -3817,6 +4512,7 @@ class TestRenderMarkerTableUnknownStatus:
 
     def test_valid_status_renders_without_error(self):
         from autoresearch.cli import _render_marker_table
+
         markers_data = [
             {
                 "id": "repo:m",
@@ -3833,6 +4529,7 @@ class TestRenderMarkerTableUnknownStatus:
 # ---------------------------------------------------------------------------
 # main callback — headless with no subcommand exits 2
 # ---------------------------------------------------------------------------
+
 
 class TestMainCallbackHeadlessNoSubcommand:
     def test_headless_no_subcommand_exits_2(self):
@@ -3851,6 +4548,7 @@ class TestMainCallbackHeadlessNoSubcommand:
 # ---------------------------------------------------------------------------
 # _toggle_skip / _toggle_pause — tracked not found
 # ---------------------------------------------------------------------------
+
 
 class TestToggleSkipPauseTrackedNotFound:
     def test_toggle_skip_when_tracked_is_none_no_crash(self):
@@ -3895,6 +4593,7 @@ class TestToggleSkipPauseTrackedNotFound:
 # ---------------------------------------------------------------------------
 # _finalize_interactive — no results early return
 # ---------------------------------------------------------------------------
+
 
 class TestFinalizeInteractiveNoResults:
     def test_no_results_prints_dim_and_returns(self):
@@ -3949,6 +4648,7 @@ class TestFinalizeInteractiveNoResults:
 # _merge_interactive — no branch
 # ---------------------------------------------------------------------------
 
+
 class TestMergeInteractiveNoBranch:
     def test_no_branch_prints_dim(self):
         from unittest.mock import MagicMock
@@ -3984,7 +4684,10 @@ class TestMergeInteractiveNoBranch:
         ctx = MagicMock()
         with (
             patch.object(Prompt, "ask", return_value="main"),
-            patch("autoresearch.finalize.merge_finalized", side_effect=Exception("git conflict")),
+            patch(
+                "autoresearch.finalize.merge_finalized",
+                side_effect=Exception("git conflict"),
+            ),
         ):
             _merge_interactive(ctx, tracked)
 
@@ -3992,6 +4695,7 @@ class TestMergeInteractiveNoBranch:
 # ---------------------------------------------------------------------------
 # detach_cmd — non-headless output
 # ---------------------------------------------------------------------------
+
 
 class TestDetachCmdNonHeadless:
     def test_non_headless_detach_success_prints_yellow(self):
@@ -4023,6 +4727,7 @@ class TestDetachCmdNonHeadless:
 # ---------------------------------------------------------------------------
 # skip_cmd / pause_cmd — non-headless toggle messages
 # ---------------------------------------------------------------------------
+
 
 class TestSkipPauseCmdNonHeadless:
     def test_skip_non_headless_prints_skipped(self):
@@ -4106,6 +4811,7 @@ class TestSkipPauseCmdNonHeadless:
 # daemon_stop — non-headless paths
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonStopNonHeadless:
     def test_non_headless_stopped_prints_green(self):
         with patch("autoresearch.daemon.stop_daemon", return_value=True):
@@ -4123,6 +4829,7 @@ class TestDaemonStopNonHeadless:
 # ---------------------------------------------------------------------------
 # daemon_logs — no log file non-headless
 # ---------------------------------------------------------------------------
+
 
 class TestDaemonLogsNoFile:
     def test_non_headless_no_log_file_prints_dim(self, tmp_path):
@@ -4144,6 +4851,7 @@ class TestDaemonLogsNoFile:
 # run_cmd — no --marker and no --repo headless
 # ---------------------------------------------------------------------------
 
+
 class TestRunCmdNoMarkerNoRepo:
     def test_headless_no_marker_no_config_exits_2(self):
         with patch("autoresearch.cli._load_local_markers", return_value=[]):
@@ -4161,6 +4869,7 @@ class TestRunCmdNoMarkerNoRepo:
 # ---------------------------------------------------------------------------
 # headless_confirm non-headless path (cli_utils.py line 39)
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessConfirmInteractive:
     def test_user_answers_yes(self):
@@ -4207,6 +4916,7 @@ class TestHeadlessConfirmInteractive:
 # headless_prompt non-headless path (cli_utils.py line 56)
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessPromptInteractive:
     def test_prompts_user_returns_value(self):
         from unittest.mock import MagicMock
@@ -4230,7 +4940,9 @@ class TestHeadlessPromptInteractive:
 
         ctx = MagicMock(spec=typer.Context)
         ctx.obj = {"headless": False}
-        with patch("autoresearch.cli_utils.Prompt.ask", return_value="answer") as mock_ask:
+        with patch(
+            "autoresearch.cli_utils.Prompt.ask", return_value="answer"
+        ) as mock_ask:
             result = headless_prompt(ctx, "Enter:")
         assert result == "answer"
         mock_ask.assert_called_once_with("Enter:", default=None)
@@ -4240,14 +4952,19 @@ class TestHeadlessPromptInteractive:
 # init_cmd non-headless with existing config (cli.py line 355)
 # ---------------------------------------------------------------------------
 
+
 class TestInitCmdNonHeadlessAlreadyConfig:
     def test_synced_message_when_config_exists(self, tmp_path):
         ar_dir = tmp_path / ".autoresearch"
         ar_dir.mkdir(parents=True)
         config_file = ar_dir / "config.yaml"
         config_file.write_text("markers: []")
-        with patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir):
-            result = runner.invoke(app, ["init", "--path", str(tmp_path), "--no-claude"])
+        with patch(
+            "autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir
+        ):
+            result = runner.invoke(
+                app, ["init", "--path", str(tmp_path), "--no-claude"]
+            )
         assert result.exit_code == 0
         assert "Synced" in result.output
 
@@ -4256,14 +4973,19 @@ class TestInitCmdNonHeadlessAlreadyConfig:
         ar_dir.mkdir(parents=True)
         config_file = ar_dir / "config.yaml"
         config_file.write_text("markers: []")
-        with patch("autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir):
-            result = runner.invoke(app, ["init", "--path", str(tmp_path), "--no-claude"])
+        with patch(
+            "autoresearch.agent_profile.init_autoresearch_dir", return_value=ar_dir
+        ):
+            result = runner.invoke(
+                app, ["init", "--path", str(tmp_path), "--no-claude"]
+            )
         assert "already existed" in result.output
 
 
 # ---------------------------------------------------------------------------
 # daemon status with unresolvable marker (cli.py line 1190)
 # ---------------------------------------------------------------------------
+
 
 class TestDaemonStatusUnresolvableMarker:
     def test_skips_marker_without_config(self):
@@ -4274,7 +4996,9 @@ class TestDaemonStatusUnresolvableMarker:
             patch("autoresearch.daemon.check_stale_pid"),
             patch("autoresearch.daemon.read_pid", return_value=None),
             patch("autoresearch.daemon.is_pid_alive", return_value=False),
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, None, None)),
+            patch(
+                "autoresearch.cli._resolve_marker_data", return_value=(None, None, None)
+            ),
         ):
             result = runner.invoke(app, ["--headless", "daemon", "status"])
         assert result.exit_code == 0
@@ -4285,6 +5009,7 @@ class TestDaemonStatusUnresolvableMarker:
 # ---------------------------------------------------------------------------
 # run_cmd non-headless repo with no matching markers (cli.py line 561-562)
 # ---------------------------------------------------------------------------
+
 
 class TestRunCmdNonHeadlessRepoNoMatch:
     def test_non_headless_no_markers_for_repo(self):
@@ -4299,6 +5024,7 @@ class TestRunCmdNonHeadlessRepoNoMatch:
 # run_cmd repo mode skips non-active markers (cli.py line 573)
 # ---------------------------------------------------------------------------
 
+
 class TestRunRepoSkipsNonActiveNonHeadless:
     def test_non_headless_skips_paused_marker(self):
         from autoresearch.marker import MarkerFile
@@ -4310,9 +5036,15 @@ class TestRunRepoSkipsNonActiveNonHeadless:
 
         with (
             patch("autoresearch.cli._load_state", return_value=state),
-            patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fakerepo/.autoresearch.yaml")),
+            patch(
+                "autoresearch.cli.find_marker_file",
+                return_value=Path("/tmp/fakerepo/.autoresearch.yaml"),
+            ),
             patch("autoresearch.cli.load_markers", return_value=mf),
-            patch("autoresearch.cli.get_effective_status", return_value=MarkerStatus.PAUSED),
+            patch(
+                "autoresearch.cli.get_effective_status",
+                return_value=MarkerStatus.PAUSED,
+            ),
         ):
             result = runner.invoke(app, ["run", "--repo", "fakerepo"])
         assert result.exit_code == 0
@@ -4328,6 +5060,7 @@ class TestStatusMenuInteractiveActions:
         from unittest.mock import MagicMock
 
         import typer
+
         ctx = MagicMock(spec=typer.Context)
         ctx.obj = {"headless": False}
         return ctx
@@ -4380,7 +5113,9 @@ class TestStatusMenuInteractiveActions:
             patch("autoresearch.cli.find_marker_file", return_value=marker_file_path),
             patch("autoresearch.cli._repo_mode"),
             patch("autoresearch.cli._load_local_markers", return_value=[tracked]),
-            patch("autoresearch.cli._resolve_marker_data", return_value=(None, None, None)),
+            patch(
+                "autoresearch.cli._resolve_marker_data", return_value=(None, None, None)
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["2", "4"]),
         ):
             _interactive_main(ctx)
@@ -4396,6 +5131,7 @@ class TestMarkerSubmenuInteractiveActions:
         from unittest.mock import MagicMock
 
         import typer
+
         ctx = MagicMock(spec=typer.Context)
         ctx.obj = {"headless": False}
         return ctx
@@ -4404,13 +5140,20 @@ class TestMarkerSubmenuInteractiveActions:
         from autoresearch.cli import _marker_submenu
         from autoresearch.marker import MarkerFile
 
-        tracked = _make_tracked(baseline=10.0, current=42.0, branch="autoresearch/m-mar31")
+        tracked = _make_tracked(
+            baseline=10.0, current=42.0, branch="autoresearch/m-mar31"
+        )
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["q"]),
         ):
             _marker_submenu(ctx, tracked)
@@ -4423,9 +5166,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["s", "q"]),
             patch("autoresearch.cli._show_status_interactive") as mock_status,
         ):
@@ -4440,9 +5188,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["r", "q"]),
             patch("autoresearch.cli._run_single_marker") as mock_run,
         ):
@@ -4457,9 +5210,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["k", "q"]),
             patch("autoresearch.cli._toggle_skip") as mock_skip,
         ):
@@ -4474,9 +5232,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["f", "q"]),
             patch("autoresearch.cli._finalize_interactive") as mock_fin,
         ):
@@ -4491,9 +5254,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["m", "q"]),
             patch("autoresearch.cli._merge_interactive") as mock_merge,
         ):
@@ -4508,9 +5276,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["t", "q"]),
             patch("autoresearch.cli._show_results_interactive") as mock_results,
         ):
@@ -4525,9 +5298,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["p", "q"]),
             patch("autoresearch.cli._toggle_pause") as mock_pause,
         ):
@@ -4542,9 +5320,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["e", "q"]),
             patch("autoresearch.cli._edit_config") as mock_edit,
         ):
@@ -4559,9 +5342,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["b", "q"]),
             patch("autoresearch.cli._show_branch") as mock_branch,
         ):
@@ -4576,9 +5364,14 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["i", "q"]),
             patch("autoresearch.cli._show_ideas_interactive") as mock_ideas,
         ):
@@ -4593,15 +5386,19 @@ class TestMarkerSubmenuInteractiveActions:
         marker = _make_marker()
         ctx = self._make_ctx()
         with (
-            patch("autoresearch.cli._resolve_marker_data", return_value=(
-                MarkerFile(markers=[marker]), marker, MarkerStatus.ACTIVE
-            )),
+            patch(
+                "autoresearch.cli._resolve_marker_data",
+                return_value=(
+                    MarkerFile(markers=[marker]),
+                    marker,
+                    MarkerStatus.ACTIVE,
+                ),
+            ),
             patch("rich.prompt.Prompt.ask", side_effect=["c", "q"]),
             patch("autoresearch.cli._show_confidence_interactive") as mock_conf,
         ):
             _marker_submenu(ctx, tracked)
         mock_conf.assert_called_once()
-
 
 
 # ---------------------------------------------------------------------------
@@ -4612,6 +5409,7 @@ class TestMarkerSubmenuInteractiveActions:
 class TestFormatTrackedJsonAdditional:
     def _call(self, tracked, status=None):
         from autoresearch.cli import _format_tracked_json
+
         marker = _make_marker()
         effective_status = status or MarkerStatus.ACTIVE
         return _format_tracked_json(tracked, marker, effective_status)
@@ -4715,13 +5513,17 @@ class TestHeadlessStatusAdditional:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_status_not_found_returns_error(self):
         state = AppState(markers=[])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "nonexistent:nonexistent"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "nonexistent:nonexistent"]
+            )
         assert result.exit_code == 1
         data = json.loads(result.output)
         assert data["status"] == "error"
@@ -4740,7 +5542,9 @@ class TestHeadlessPauseAdditional:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_pause_not_paused_toggles(self, tmp_path):
@@ -4750,13 +5554,16 @@ class TestHeadlessPauseAdditional:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
 # ---------------------------------------------------------------------------
 # headless list — additional field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessListFields:
     def test_marker_id_in_data(self, tmp_path):
@@ -4789,10 +5596,13 @@ class TestHeadlessListFields:
 # headless status — additional field checks
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessStatusFields:
     def test_not_found_returns_error(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
-            result = runner.invoke(app, ["--headless", "status", "-m", "missing:marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "missing:marker"]
+            )
         assert result.exit_code == 1
         data = json.loads(result.output)
         assert data["status"] == "error"
@@ -4801,7 +5611,9 @@ class TestHeadlessStatusFields:
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -4810,6 +5622,7 @@ class TestHeadlessStatusFields:
 # ---------------------------------------------------------------------------
 # headless skip — additional scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessSkipAdditional:
     def test_skip_not_found_returns_error(self):
@@ -4824,13 +5637,16 @@ class TestHeadlessSkipAdditional:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
 # ---------------------------------------------------------------------------
 # headless detach — additional scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessDetachAdditional:
     def test_detach_not_found_returns_error(self):
@@ -4845,7 +5661,9 @@ class TestHeadlessDetachAdditional:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
@@ -4853,12 +5671,15 @@ class TestHeadlessDetachAdditional:
 # headless results — additional scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessResultsAdditional:
     def test_no_results_file_returns_empty(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -4874,6 +5695,7 @@ class TestHeadlessResultsAdditional:
 # headless ideas — additional scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessIdeasAdditional:
     def test_marker_not_found_returns_error(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
@@ -4884,13 +5706,16 @@ class TestHeadlessIdeasAdditional:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
 # ---------------------------------------------------------------------------
 # headless confidence — additional scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessConfidenceAdditional2:
     def test_marker_not_found_returns_error(self):
@@ -4902,13 +5727,16 @@ class TestHeadlessConfidenceAdditional2:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
 # ---------------------------------------------------------------------------
 # headless list — more field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessListMoreFields:
     def test_list_returns_data_key(self):
@@ -4935,7 +5763,9 @@ class TestHeadlessListMoreFields:
 
     def test_list_two_markers(self):
         t1 = _make_tracked(marker_id="repo1:m1", marker_name="m1")
-        t2 = _make_tracked(repo_path="/tmp/repo2", marker_id="repo2:m2", marker_name="m2")
+        t2 = _make_tracked(
+            repo_path="/tmp/repo2", marker_id="repo2:m2", marker_name="m2"
+        )
         state = AppState(markers=[t1, t2])
         with patch("autoresearch.cli.load_state", return_value=state):
             result = runner.invoke(app, ["--headless", "list"])
@@ -4955,6 +5785,7 @@ class TestHeadlessListMoreFields:
 # headless status — more scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessStatusMore:
     def test_status_not_found_returns_error(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
@@ -4965,7 +5796,9 @@ class TestHeadlessStatusMore:
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -4974,7 +5807,9 @@ class TestHeadlessStatusMore:
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert "data" in data
@@ -4983,6 +5818,7 @@ class TestHeadlessStatusMore:
 # ---------------------------------------------------------------------------
 # headless pause — more scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessPauseMore:
     def test_pause_not_found_returns_error(self):
@@ -4997,7 +5833,9 @@ class TestHeadlessPauseMore:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_pause_json_parseable(self):
@@ -5007,7 +5845,9 @@ class TestHeadlessPauseMore:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert isinstance(data, dict)
@@ -5017,6 +5857,7 @@ class TestHeadlessPauseMore:
 # headless pause — action field checks
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessPauseActionField:
     def test_pause_returns_dict(self):
         tracked = _make_tracked()
@@ -5025,7 +5866,9 @@ class TestHeadlessPauseActionField:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert isinstance(data, dict)
@@ -5037,7 +5880,9 @@ class TestHeadlessPauseActionField:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -5051,6 +5896,7 @@ class TestHeadlessPauseActionField:
 # headless confidence — more checks
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessConfidenceMore:
     def test_confidence_not_found_returns_error(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
@@ -5061,7 +5907,9 @@ class TestHeadlessConfidenceMore:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -5070,7 +5918,9 @@ class TestHeadlessConfidenceMore:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert isinstance(data, dict)
@@ -5079,6 +5929,7 @@ class TestHeadlessConfidenceMore:
 # ---------------------------------------------------------------------------
 # headless results — more scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessResultsMore:
     def test_results_not_found_returns_error(self):
@@ -5090,7 +5941,9 @@ class TestHeadlessResultsMore:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -5099,7 +5952,9 @@ class TestHeadlessResultsMore:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert isinstance(data["data"], list)
@@ -5108,6 +5963,7 @@ class TestHeadlessResultsMore:
 # ---------------------------------------------------------------------------
 # headless ideas — more scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessIdeasMore:
     def test_ideas_not_found_returns_error(self):
@@ -5119,7 +5975,9 @@ class TestHeadlessIdeasMore:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["status"] == "ok"
@@ -5128,6 +5986,7 @@ class TestHeadlessIdeasMore:
 # ---------------------------------------------------------------------------
 # headless list — additional field/state tests
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessListExtra:
     def test_list_returns_json_dict(self):
@@ -5197,24 +6056,31 @@ class TestHeadlessListExtra:
 # headless status — additional tests
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessStatusExtra:
     def test_status_not_found_exits_1(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
-            result = runner.invoke(app, ["--headless", "status", "-m", "missing:marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "missing:marker"]
+            )
         assert result.exit_code == 1
 
     def test_status_found_exits_0(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_status_output_is_json(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert isinstance(data, dict)
@@ -5223,7 +6089,9 @@ class TestHeadlessStatusExtra:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "status" in data
 
@@ -5231,6 +6099,7 @@ class TestHeadlessStatusExtra:
 # ---------------------------------------------------------------------------
 # headless skip — additional tests
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessSkipExtra:
     def test_skip_not_tracked_exits_1(self):
@@ -5245,7 +6114,9 @@ class TestHeadlessSkipExtra:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-                result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_skip_output_is_json(self, tmp_path):
@@ -5255,7 +6126,9 @@ class TestHeadlessSkipExtra:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-                result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert isinstance(data, dict)
@@ -5264,6 +6137,7 @@ class TestHeadlessSkipExtra:
 # ---------------------------------------------------------------------------
 # headless pause — additional tests
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessPauseExtra:
     def test_pause_not_tracked_exits_1(self):
@@ -5278,7 +6152,9 @@ class TestHeadlessPauseExtra:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-                result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_pause_output_is_json(self, tmp_path):
@@ -5288,7 +6164,9 @@ class TestHeadlessPauseExtra:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-                result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert isinstance(data, dict)
 
@@ -5297,12 +6175,15 @@ class TestHeadlessPauseExtra:
 # headless results — output shape tests
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessResultsShape:
     def test_results_has_data_key(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "data" in data
 
@@ -5310,7 +6191,9 @@ class TestHeadlessResultsShape:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "status" in data
 
@@ -5318,7 +6201,9 @@ class TestHeadlessResultsShape:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["data"] == []
 
@@ -5327,12 +6212,15 @@ class TestHeadlessResultsShape:
 # headless ideas — output shape tests
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessIdeasShape:
     def test_ideas_has_status_key(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "status" in data
 
@@ -5340,7 +6228,9 @@ class TestHeadlessIdeasShape:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5348,7 +6238,9 @@ class TestHeadlessIdeasShape:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         assert json.loads(result.output) is not None
 
@@ -5357,12 +6249,15 @@ class TestHeadlessIdeasShape:
 # headless confidence — output shape tests
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessConfidenceShape:
     def test_confidence_has_status_key(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "status" in data
 
@@ -5370,13 +6265,17 @@ class TestHeadlessConfidenceShape:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
         assert json.loads(result.output) is not None
 
     def test_confidence_not_found_exits_1(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "bad:marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "bad:marker"]
+            )
         assert result.exit_code == 1
 
 
@@ -5407,8 +6306,10 @@ class TestHeadlessListFieldsB:
     def test_list_with_marker_has_one_item(self, tmp_path):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.find_marker_file", return_value=None):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.find_marker_file", return_value=None),
+        ):
             result = runner.invoke(app, ["--headless", "list"])
         data = json.loads(result.output)
         assert len(data["data"]) == 1
@@ -5416,8 +6317,10 @@ class TestHeadlessListFieldsB:
     def test_list_item_has_id(self, tmp_path):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.find_marker_file", return_value=None):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.find_marker_file", return_value=None),
+        ):
             result = runner.invoke(app, ["--headless", "list"])
         data = json.loads(result.output)
         assert "id" in data["data"][0]
@@ -5425,8 +6328,10 @@ class TestHeadlessListFieldsB:
     def test_list_item_id_value(self, tmp_path):
         tracked = _make_tracked(marker_id="myrepo:mymarker")
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.find_marker_file", return_value=None):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.find_marker_file", return_value=None),
+        ):
             result = runner.invoke(app, ["--headless", "list"])
         data = json.loads(result.output)
         assert data["data"][0]["id"] == "myrepo:mymarker"
@@ -5435,8 +6340,10 @@ class TestHeadlessListFieldsB:
         t1 = _make_tracked(marker_id="repo1:m1", marker_name="m1")
         t2 = _make_tracked(marker_id="repo2:m2", marker_name="m2")
         state = AppState(markers=[t1, t2])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.find_marker_file", return_value=None):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.find_marker_file", return_value=None),
+        ):
             result = runner.invoke(app, ["--headless", "list"])
         data = json.loads(result.output)
         assert len(data["data"]) == 2
@@ -5456,9 +6363,13 @@ class TestHeadlessStatusFieldsB:
 
     def test_status_exit_0_found(self, tmp_path):
         _tracked, state = self._tracked_with_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.find_marker_file", return_value=None):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.find_marker_file", return_value=None),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_status_exit_1_not_found(self):
@@ -5468,17 +6379,25 @@ class TestHeadlessStatusFieldsB:
 
     def test_status_data_has_id(self, tmp_path):
         _tracked, state = self._tracked_with_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.find_marker_file", return_value=None):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.find_marker_file", return_value=None),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "id" in data.get("data", data)
 
     def test_status_json_parseable(self, tmp_path):
         _tracked, state = self._tracked_with_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.find_marker_file", return_value=None):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.find_marker_file", return_value=None),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_status_not_found_has_status_error(self):
@@ -5496,9 +6415,13 @@ class TestHeadlessSkipFieldsB:
 
     def test_skip_exit_0_found(self):
         _tracked, state = self._tracked_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_skip_exit_1_not_found(self):
@@ -5508,9 +6431,13 @@ class TestHeadlessSkipFieldsB:
 
     def test_skip_json_parseable(self):
         _tracked, state = self._tracked_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_skip_not_found_status_error(self):
@@ -5521,9 +6448,13 @@ class TestHeadlessSkipFieldsB:
 
     def test_skip_status_ok(self):
         _tracked, state = self._tracked_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5536,9 +6467,13 @@ class TestHeadlessPauseFieldsB:
 
     def test_pause_exit_0_found(self):
         _tracked, state = self._tracked_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_pause_exit_1_not_found(self):
@@ -5548,9 +6483,13 @@ class TestHeadlessPauseFieldsB:
 
     def test_pause_json_parseable(self):
         _tracked, state = self._tracked_state()
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_pause_not_found_status_error(self):
@@ -5562,9 +6501,13 @@ class TestHeadlessPauseFieldsB:
     def test_pause_status_ok(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5573,9 +6516,13 @@ class TestHeadlessDetachFieldsB:
     def test_detach_exit_0_found(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_detach_exit_1_not_found(self):
@@ -5586,9 +6533,13 @@ class TestHeadlessDetachFieldsB:
     def test_detach_json_parseable(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_detach_not_found_status_error(self):
@@ -5600,9 +6551,13 @@ class TestHeadlessDetachFieldsB:
     def test_detach_found_status_ok(self):
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state), \
-             patch("autoresearch.cli.save_state"):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5617,7 +6572,9 @@ class TestHeadlessResultsFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["data"] == []
 
@@ -5625,7 +6582,9 @@ class TestHeadlessResultsFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5633,7 +6592,9 @@ class TestHeadlessResultsFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert isinstance(data["data"], list)
 
@@ -5654,7 +6615,9 @@ class TestHeadlessIdeasFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5662,7 +6625,9 @@ class TestHeadlessIdeasFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "ideas" in data.get("data", data)
 
@@ -5676,7 +6641,9 @@ class TestHeadlessIdeasFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
 
@@ -5690,14 +6657,18 @@ class TestHeadlessConfidenceFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_confidence_status_ok(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5705,7 +6676,9 @@ class TestHeadlessConfidenceFieldsB:
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_confidence_not_found_status_error(self):
@@ -5718,6 +6691,7 @@ class TestHeadlessConfidenceFieldsB:
 # ---------------------------------------------------------------------------
 # NEW BATCH: Headless list additional field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessListNewBatch:
     def test_list_data_is_list(self):
@@ -5750,8 +6724,12 @@ class TestHeadlessListNewBatch:
         assert "data" in data
 
     def test_list_two_markers(self, tmp_path):
-        t1 = _make_tracked(repo_path=str(tmp_path), marker_id="repo1:m1", marker_name="m1")
-        t2 = _make_tracked(repo_path=str(tmp_path), marker_id="repo1:m2", marker_name="m2")
+        t1 = _make_tracked(
+            repo_path=str(tmp_path), marker_id="repo1:m1", marker_name="m1"
+        )
+        t2 = _make_tracked(
+            repo_path=str(tmp_path), marker_id="repo1:m2", marker_name="m2"
+        )
         state = AppState(markers=[t1, t2])
         with (
             patch("autoresearch.cli.load_state", return_value=state),
@@ -5788,6 +6766,7 @@ class TestHeadlessListNewBatch:
 # NEW BATCH: Headless status field checks
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessStatusNewBatch:
     def test_status_not_found_exit_1(self):
         with patch("autoresearch.cli.load_state", return_value=AppState()):
@@ -5804,21 +6783,27 @@ class TestHeadlessStatusNewBatch:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_status_json_parseable(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_status_data_key_present(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "data" in data or "status" in data
 
@@ -5826,7 +6811,9 @@ class TestHeadlessStatusNewBatch:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "status" in data
 
@@ -5834,6 +6821,7 @@ class TestHeadlessStatusNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: Headless results field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessResultsNewBatch:
     def test_results_not_found_exit_1(self):
@@ -5851,21 +6839,27 @@ class TestHeadlessResultsNewBatch:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_results_json_parseable(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_results_status_ok(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5873,7 +6867,9 @@ class TestHeadlessResultsNewBatch:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert isinstance(data.get("data", []), list)
 
@@ -5881,6 +6877,7 @@ class TestHeadlessResultsNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: Headless ideas field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessIdeasNewBatch:
     def test_ideas_not_found_exit_1(self):
@@ -5898,21 +6895,27 @@ class TestHeadlessIdeasNewBatch:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_ideas_json_parseable(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_ideas_status_ok(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5920,6 +6923,7 @@ class TestHeadlessIdeasNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: Headless confidence field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessConfidenceNewBatch:
     def test_confidence_not_found_exit_1(self):
@@ -5937,21 +6941,27 @@ class TestHeadlessConfidenceNewBatch:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_confidence_json_parseable(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_confidence_status_ok(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -5959,6 +6969,7 @@ class TestHeadlessConfidenceNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: Headless skip field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessSkipNewBatch:
     def test_skip_not_found_exit_1(self):
@@ -5980,7 +6991,9 @@ class TestHeadlessSkipNewBatch:
             patch("autoresearch.cli.save_state"),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_skip_found_json_parseable(self, tmp_path):
@@ -5991,7 +7004,9 @@ class TestHeadlessSkipNewBatch:
             patch("autoresearch.cli.save_state"),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_skip_found_status_ok(self, tmp_path):
@@ -6002,7 +7017,9 @@ class TestHeadlessSkipNewBatch:
             patch("autoresearch.cli.save_state"),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -6010,6 +7027,7 @@ class TestHeadlessSkipNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: Headless pause field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessPauseNewBatch:
     def test_pause_not_found_exit_1(self):
@@ -6031,7 +7049,9 @@ class TestHeadlessPauseNewBatch:
             patch("autoresearch.cli.save_state"),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_pause_json_parseable(self, tmp_path):
@@ -6042,7 +7062,9 @@ class TestHeadlessPauseNewBatch:
             patch("autoresearch.cli.save_state"),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_pause_status_ok(self, tmp_path):
@@ -6053,7 +7075,9 @@ class TestHeadlessPauseNewBatch:
             patch("autoresearch.cli.save_state"),
             patch("autoresearch.cli.find_marker_file", return_value=None),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -6061,6 +7085,7 @@ class TestHeadlessPauseNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: Headless detach field checks
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessDetachNewBatch:
     def test_detach_not_found_exit_1(self):
@@ -6081,7 +7106,9 @@ class TestHeadlessDetachNewBatch:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_detach_json_parseable(self, tmp_path):
@@ -6091,7 +7118,9 @@ class TestHeadlessDetachNewBatch:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_detach_status_ok(self, tmp_path):
@@ -6101,7 +7130,9 @@ class TestHeadlessDetachNewBatch:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -6109,6 +7140,7 @@ class TestHeadlessDetachNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: headless commands extra coverage
 # ---------------------------------------------------------------------------
+
 
 class TestHeadlessListExtraCoverage:
     def test_empty_data_list_type(self):
@@ -6161,14 +7193,18 @@ class TestHeadlessStatusExtraCoverage:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_found_marker_ok_status(self, tmp_path):
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -6176,7 +7212,9 @@ class TestHeadlessStatusExtraCoverage:
         t = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[t])
         with patch("autoresearch.cli.load_state", return_value=state):
-            result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "status", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert "data" in data
 
@@ -6200,7 +7238,9 @@ class TestHeadlessSkipExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_skip_found_ok_or_no_data_issue(self, tmp_path):
@@ -6210,7 +7250,9 @@ class TestHeadlessSkipExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "skip", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] in ("ok", "error")
 
@@ -6234,7 +7276,9 @@ class TestHeadlessPauseExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
     def test_pause_found_exit_0(self, tmp_path):
@@ -6244,7 +7288,9 @@ class TestHeadlessPauseExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "pause", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
 
@@ -6267,7 +7313,9 @@ class TestHeadlessResultsExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_found_ok_status(self, tmp_path):
@@ -6277,7 +7325,9 @@ class TestHeadlessResultsExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -6288,7 +7338,9 @@ class TestHeadlessResultsExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "results", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "results", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert isinstance(data.get("data", []), list)
 
@@ -6312,7 +7364,9 @@ class TestHeadlessIdeasExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.ideas.read_ideas", return_value=""),
         ):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_found_json_parseable(self, tmp_path):
@@ -6322,7 +7376,9 @@ class TestHeadlessIdeasExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.ideas.read_ideas", return_value=""),
         ):
-            result = runner.invoke(app, ["--headless", "ideas", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "ideas", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
 
@@ -6345,7 +7401,9 @@ class TestHeadlessConfidenceExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_found_json_parseable(self, tmp_path):
@@ -6355,7 +7413,9 @@ class TestHeadlessConfidenceExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.results.read_results", return_value=[]),
         ):
-            result = runner.invoke(app, ["--headless", "confidence", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "confidence", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None
 
 
@@ -6378,7 +7438,9 @@ class TestHeadlessDetachExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         assert result.exit_code == 0
 
     def test_found_ok_status(self, tmp_path):
@@ -6388,7 +7450,9 @@ class TestHeadlessDetachExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         data = json.loads(result.output)
         assert data["status"] == "ok"
 
@@ -6399,5 +7463,7 @@ class TestHeadlessDetachExtraCoverage:
             patch("autoresearch.cli.load_state", return_value=state),
             patch("autoresearch.cli.save_state"),
         ):
-            result = runner.invoke(app, ["--headless", "detach", "-m", "fakerepo:test-marker"])
+            result = runner.invoke(
+                app, ["--headless", "detach", "-m", "fakerepo:test-marker"]
+            )
         assert json.loads(result.output) is not None

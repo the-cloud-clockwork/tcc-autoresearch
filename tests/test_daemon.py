@@ -40,8 +40,12 @@ def _make_marker(name="test", schedule_type="on-demand", cron=None) -> Marker:
     return Marker(
         name=name,
         target=Target(mutable=["src/main.py"]),
-        metric=Metric(command="echo 1", extract=r"\d+", direction="higher", baseline=1.0),
-        agent=AgentConfig(model="sonnet", budget_per_experiment="5m", max_experiments=10),
+        metric=Metric(
+            command="echo 1", extract=r"\d+", direction="higher", baseline=1.0
+        ),
+        agent=AgentConfig(
+            model="sonnet", budget_per_experiment="5m", max_experiments=10
+        ),
         schedule=Schedule(type=schedule_type, cron=cron),
     )
 
@@ -61,12 +65,15 @@ def _make_tracked(marker_name="test", last_run=None, **kwargs) -> TrackedMarker:
 # Schedule evaluation
 # ---------------------------------------------------------------------------
 
+
 class TestResolveCronExpression:
     def test_on_demand_returns_none(self):
         assert _resolve_cron_expression(_make_schedule("on-demand")) is None
 
     def test_cron_with_expression(self):
-        assert _resolve_cron_expression(_make_schedule("cron", "0 1 * * *")) == "0 1 * * *"
+        assert (
+            _resolve_cron_expression(_make_schedule("cron", "0 1 * * *")) == "0 1 * * *"
+        )
 
     def test_cron_without_expression(self):
         assert _resolve_cron_expression(_make_schedule("cron")) is None
@@ -102,24 +109,36 @@ class TestIsDue:
         # Last run was yesterday at 01:00, now is today at 02:00
         yesterday_1am = datetime(2026, 3, 29, 1, 0, tzinfo=timezone.utc)
         today_2am = datetime(2026, 3, 30, 2, 0, tzinfo=timezone.utc)
-        assert is_due(_make_schedule("overnight"), yesterday_1am.isoformat(), now=today_2am) is True
+        assert (
+            is_due(
+                _make_schedule("overnight"), yesterday_1am.isoformat(), now=today_2am
+            )
+            is True
+        )
 
     def test_overnight_not_due_same_day(self):
         # Last run was today at 01:00, now is today at 02:00
         today_1am = datetime(2026, 3, 30, 1, 0, tzinfo=timezone.utc)
         today_2am = datetime(2026, 3, 30, 2, 0, tzinfo=timezone.utc)
-        assert is_due(_make_schedule("overnight"), today_1am.isoformat(), now=today_2am) is False
+        assert (
+            is_due(_make_schedule("overnight"), today_1am.isoformat(), now=today_2am)
+            is False
+        )
 
     def test_invalid_last_run_is_due(self):
         assert is_due(_make_schedule("cron", "0 * * * *"), "not-a-date") is True
 
     def test_invalid_cron_not_due(self):
-        assert is_due(_make_schedule("cron", "invalid cron"), "2026-03-30T01:00:00+00:00") is False
+        assert (
+            is_due(_make_schedule("cron", "invalid cron"), "2026-03-30T01:00:00+00:00")
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
 # PID management
 # ---------------------------------------------------------------------------
+
 
 class TestPidManagement:
     def test_write_read_roundtrip(self, tmp_path):
@@ -166,15 +185,15 @@ class TestPidManagement:
         assert check_stale_pid(tmp_path / "missing.pid") is False
 
 
-
-
 # ---------------------------------------------------------------------------
 # DaemonRunner
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerTick:
     def _make_runner(self, config=None):
         from autoresearch.config import GlobalConfig
+
         cfg = config or GlobalConfig()
         return DaemonRunner(config=cfg)
 
@@ -193,7 +212,10 @@ class TestDaemonRunnerTick:
         runner = self._make_runner()
         with (
             patch("autoresearch.daemon.load_state", return_value=state),
-            patch("autoresearch.daemon.find_marker_file", return_value=Path("/tmp/.autoresearch.yaml")),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/.autoresearch.yaml"),
+            ),
             patch("autoresearch.daemon.load_markers", return_value=mf),
         ):
             runner._tick()
@@ -208,9 +230,15 @@ class TestDaemonRunnerTick:
         runner = self._make_runner()
         with (
             patch("autoresearch.daemon.load_state", return_value=state),
-            patch("autoresearch.daemon.find_marker_file", return_value=Path("/tmp/.autoresearch.yaml")),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/.autoresearch.yaml"),
+            ),
             patch("autoresearch.daemon.load_markers", return_value=mf),
-            patch("autoresearch.daemon.get_effective_status", return_value=MarkerStatus.ACTIVE),
+            patch(
+                "autoresearch.daemon.get_effective_status",
+                return_value=MarkerStatus.ACTIVE,
+            ),
             patch.object(runner, "_run_marker_thread"),  # Don't actually run
         ):
             runner._tick()
@@ -226,9 +254,15 @@ class TestDaemonRunnerTick:
         runner = self._make_runner()
         with (
             patch("autoresearch.daemon.load_state", return_value=state),
-            patch("autoresearch.daemon.find_marker_file", return_value=Path("/tmp/.autoresearch.yaml")),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/.autoresearch.yaml"),
+            ),
             patch("autoresearch.daemon.load_markers", return_value=mf),
-            patch("autoresearch.daemon.get_effective_status", return_value=MarkerStatus.SKIP),
+            patch(
+                "autoresearch.daemon.get_effective_status",
+                return_value=MarkerStatus.SKIP,
+            ),
         ):
             runner._tick()
         assert len(runner._active_runs) == 0
@@ -244,7 +278,10 @@ class TestDaemonRunnerTick:
 
         with (
             patch("autoresearch.daemon.load_state", return_value=state),
-            patch("autoresearch.daemon.find_marker_file", return_value=Path("/tmp/.autoresearch.yaml")),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/.autoresearch.yaml"),
+            ),
             patch("autoresearch.daemon.load_markers", return_value=mf),
         ):
             runner._tick()
@@ -267,9 +304,15 @@ class TestDaemonRunnerTick:
 
         with (
             patch("autoresearch.daemon.load_state", return_value=state),
-            patch("autoresearch.daemon.find_marker_file", return_value=Path("/tmp/.autoresearch.yaml")),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/.autoresearch.yaml"),
+            ),
             patch("autoresearch.daemon.load_markers", return_value=mf),
-            patch("autoresearch.daemon.get_effective_status", return_value=MarkerStatus.ACTIVE),
+            patch(
+                "autoresearch.daemon.get_effective_status",
+                return_value=MarkerStatus.ACTIVE,
+            ),
         ):
             runner._tick()
         assert len(runner._active_runs) == 0
@@ -280,12 +323,14 @@ class TestDaemonRunnerTick:
 class TestDaemonRunnerLifecycle:
     def test_shutdown_stops_loop(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         runner.shutdown()
         assert runner._shutdown.is_set()
 
     def test_reap_threads(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         mock_alive = MagicMock()
@@ -303,6 +348,7 @@ class TestDaemonRunnerLifecycle:
 # ---------------------------------------------------------------------------
 # Stop daemon
 # ---------------------------------------------------------------------------
+
 
 class TestStopDaemon:
     def test_process_never_dies(self, tmp_path):
@@ -362,7 +408,9 @@ class TestIsDueNaiveDatetimeA:
     def test_naive_last_run_treated_as_utc(self):
         """Naive ISO strings (no tzinfo) should be treated as UTC."""
         # 3 hours ago naive → should be due for hourly cron
-        naive_dt = (datetime.now(timezone.utc) - timedelta(hours=3)).replace(tzinfo=None)
+        naive_dt = (datetime.now(timezone.utc) - timedelta(hours=3)).replace(
+            tzinfo=None
+        )
         last_run = naive_dt.isoformat()
         assert is_due(_make_schedule("cron", "0 * * * *"), last_run) is True
 
@@ -370,6 +418,7 @@ class TestIsDueNaiveDatetimeA:
 class TestDaemonRunnerRun:
     def test_run_calls_tick_then_joins(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         tick_calls = []
@@ -388,6 +437,7 @@ class TestDaemonRunnerRun:
 
     def test_run_catches_tick_exception(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         call_count = [0]
@@ -407,6 +457,7 @@ class TestDaemonRunnerRun:
 class TestDaemonRunnerTickBranches:
     def _make_runner(self):
         from autoresearch.config import GlobalConfig
+
         return DaemonRunner(config=GlobalConfig())
 
     def test_no_marker_file_skips(self):
@@ -428,8 +479,13 @@ class TestDaemonRunnerTickBranches:
 
         with (
             patch("autoresearch.daemon.load_state", return_value=state),
-            patch("autoresearch.daemon.find_marker_file", return_value=Path("/tmp/fake.yaml")),
-            patch("autoresearch.daemon.load_markers", side_effect=ValueError("bad yaml")),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/fake.yaml"),
+            ),
+            patch(
+                "autoresearch.daemon.load_markers", side_effect=ValueError("bad yaml")
+            ),
         ):
             runner._tick()
         assert len(runner._active_runs) == 0
@@ -442,7 +498,10 @@ class TestDaemonRunnerTickBranches:
 
         with (
             patch("autoresearch.daemon.load_state", return_value=state),
-            patch("autoresearch.daemon.find_marker_file", return_value=Path("/tmp/fake.yaml")),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/fake.yaml"),
+            ),
             patch("autoresearch.daemon.load_markers", return_value=mf),
             patch("autoresearch.daemon.get_marker", return_value=None),
         ):
@@ -453,6 +512,7 @@ class TestDaemonRunnerTickBranches:
 class TestDaemonRunnerThread:
     def _make_runner(self):
         from autoresearch.config import GlobalConfig
+
         return DaemonRunner(config=GlobalConfig())
 
     def test_run_marker_thread_success(self):
@@ -490,6 +550,7 @@ class TestDaemonRunnerThread:
 
     def test_run_marker_thread_engine_error(self):
         from autoresearch.engine import EngineError
+
         tracked = _make_tracked()
         marker = _make_marker()
         state = AppState(markers=[tracked])
@@ -500,7 +561,9 @@ class TestDaemonRunnerThread:
             patch("autoresearch.daemon.load_state", return_value=state),
             patch("autoresearch.daemon.get_tracked", return_value=tracked),
             patch("autoresearch.daemon.get_agent_runner", return_value=MagicMock()),
-            patch("autoresearch.daemon.run_marker", side_effect=EngineError("engine fail")),
+            patch(
+                "autoresearch.daemon.run_marker", side_effect=EngineError("engine fail")
+            ),
         ):
             runner._run_marker_thread(tracked, marker)
         assert runner._semaphore._value == runner._config.daemon.max_concurrent
@@ -516,7 +579,9 @@ class TestDaemonRunnerThread:
             patch("autoresearch.daemon.load_state", return_value=state),
             patch("autoresearch.daemon.get_tracked", return_value=tracked),
             patch("autoresearch.daemon.get_agent_runner", return_value=MagicMock()),
-            patch("autoresearch.daemon.run_marker", side_effect=RuntimeError("unexpected")),
+            patch(
+                "autoresearch.daemon.run_marker", side_effect=RuntimeError("unexpected")
+            ),
         ):
             runner._run_marker_thread(tracked, marker)
         assert runner._semaphore._value == runner._config.daemon.max_concurrent
@@ -525,6 +590,7 @@ class TestDaemonRunnerThread:
 class TestDaemonRunnerJoinThreadsA:
     def test_join_threads_waits(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         mock_thread = MagicMock()
@@ -535,6 +601,7 @@ class TestDaemonRunnerJoinThreadsA:
 
     def test_join_threads_multiple(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         t1 = MagicMock()
@@ -547,6 +614,7 @@ class TestDaemonRunnerJoinThreadsA:
 
     def test_join_threads_empty(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         runner._active_runs = {}
         # Should not raise
@@ -556,6 +624,7 @@ class TestDaemonRunnerJoinThreadsA:
 class TestDaemonRunnerReapThreadsA:
     def test_removes_dead_threads(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         alive = MagicMock()
@@ -570,6 +639,7 @@ class TestDaemonRunnerReapThreadsA:
 
     def test_keeps_all_when_alive(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         t1 = MagicMock()
@@ -583,6 +653,7 @@ class TestDaemonRunnerReapThreadsA:
 
     def test_removes_all_when_dead(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
 
         t1 = MagicMock()
@@ -598,6 +669,7 @@ class TestDaemonRunnerReapThreadsA:
 class TestDaemonRunnerShutdownA:
     def test_shutdown_sets_event(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         assert not runner._shutdown.is_set()
         runner.shutdown()
@@ -670,7 +742,12 @@ class TestIsDueAdditional:
     def test_cron_due_with_explicit_now(self):
         last_run_dt = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
         now = datetime(2026, 1, 1, 2, 0, tzinfo=timezone.utc)
-        assert is_due(_make_schedule("cron", "0 * * * *"), last_run_dt.isoformat(), now=now) is True
+        assert (
+            is_due(
+                _make_schedule("cron", "0 * * * *"), last_run_dt.isoformat(), now=now
+            )
+            is True
+        )
 
 
 class TestResolveCronExpressionAdditional:
@@ -692,12 +769,14 @@ class TestResolveCronExpressionAdditional:
 class TestDaemonRunnerInit:
     def test_poll_seconds_parsed(self):
         from autoresearch.config import DaemonConfig, GlobalConfig
+
         cfg = GlobalConfig(daemon=DaemonConfig(poll_interval="2m"))
         runner = DaemonRunner(config=cfg)
         assert runner._poll_seconds == 120
 
     def test_max_concurrent_sets_semaphore(self):
         from autoresearch.config import DaemonConfig, GlobalConfig
+
         cfg = GlobalConfig(daemon=DaemonConfig(max_concurrent=3))
         runner = DaemonRunner(config=cfg)
         # Acquire 3 times should succeed; 4th should fail
@@ -731,6 +810,7 @@ class TestStopDaemonStateUpdate:
 
         from autoresearch.state import AppState as AS
         from autoresearch.state import DaemonState
+
         alive_state = AS(daemon=DaemonState(running=True, pid=99999999))
         with (
             patch("autoresearch.daemon.load_state", return_value=alive_state),
@@ -769,6 +849,7 @@ class TestDaemonRunnerActiveRunSkipped:
         tracked = _make_tracked(marker_name="active-marker")
         state = AppState(markers=[tracked])
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         runner._active_runs[tracked.id] = MagicMock()  # Simulate already running
 
@@ -781,11 +862,13 @@ class TestDaemonRunnerActiveRunSkipped:
 class TestDaemonRunnerSemaphoreInit:
     def test_default_max_concurrent_positive(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         assert runner._semaphore._value > 0
 
     def test_shutdown_state_initially_false(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         assert not runner._shutdown.is_set()
 
@@ -831,6 +914,7 @@ class TestIsDueBoundary:
 # is_pid_alive — PermissionError path
 # ---------------------------------------------------------------------------
 
+
 class TestIsPidAlivePermissionErrorB:
     def test_permission_error_returns_true(self):
         """PermissionError means process exists but is owned by another user."""
@@ -852,9 +936,11 @@ class TestIsPidAlivePermissionErrorB:
 # DaemonRunner.shutdown
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerShutdown:
     def test_shutdown_sets_event(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         assert not runner._shutdown.is_set()
         runner.shutdown()
@@ -862,6 +948,7 @@ class TestDaemonRunnerShutdown:
 
     def test_shutdown_idempotent(self):
         from autoresearch.config import GlobalConfig
+
         runner = DaemonRunner(config=GlobalConfig())
         runner.shutdown()
         runner.shutdown()  # should not raise
@@ -872,9 +959,11 @@ class TestDaemonRunnerShutdown:
 # DaemonRunner._reap_threads — with mix of alive and dead threads
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerReapThreads:
     def test_reap_removes_finished_thread(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         dead = MagicMock()
         dead.is_alive.return_value = False
@@ -887,6 +976,7 @@ class TestDaemonRunnerReapThreads:
 
     def test_reap_empty_active_runs_noop(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         dr._active_runs = {}
         dr._reap_threads()  # should not raise
@@ -897,9 +987,11 @@ class TestDaemonRunnerReapThreads:
 # DaemonRunner._join_threads
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerJoinThreadsFirst:
     def test_join_calls_join_on_all_threads(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         t1 = MagicMock()
         t2 = MagicMock()
@@ -910,6 +1002,7 @@ class TestDaemonRunnerJoinThreadsFirst:
 
     def test_join_empty_active_runs_noop(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         dr._join_threads()  # should not raise
 
@@ -918,9 +1011,11 @@ class TestDaemonRunnerJoinThreadsFirst:
 # DaemonRunner._run_marker_thread — tracked not found
 # ---------------------------------------------------------------------------
 
+
 class TestRunMarkerThreadTrackedNotFound:
     def test_tracked_not_found_returns_early(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         tracked = _make_tracked()
         marker = _make_marker()
@@ -938,6 +1033,7 @@ class TestRunMarkerThreadTrackedNotFound:
 # ---------------------------------------------------------------------------
 # stop_daemon — various edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestStopDaemonEdgeCases:
     def test_no_pid_file_returns_false(self, tmp_path):
@@ -963,12 +1059,15 @@ class TestStopDaemonEdgeCases:
 # is_due — naive datetime handling
 # ---------------------------------------------------------------------------
 
+
 class TestIsDueNaiveDatetime:
     def test_naive_last_run_treated_as_utc(self):
         """Naive datetime should be treated as UTC (assigned tzinfo=UTC)."""
         # Naive datetime 2 hours ago
-        naive_last = (datetime.now(timezone.utc).replace(tzinfo=None) -
-                      __import__('datetime').timedelta(hours=2)).isoformat()
+        naive_last = (
+            datetime.now(timezone.utc).replace(tzinfo=None)
+            - __import__("datetime").timedelta(hours=2)
+        ).isoformat()
         result = is_due(_make_schedule("cron", "0 * * * *"), naive_last)
         assert result is True  # 2 hours ago, hourly cron = due
 
@@ -976,6 +1075,7 @@ class TestIsDueNaiveDatetime:
 # ---------------------------------------------------------------------------
 # _resolve_cron_expression — additional checks
 # ---------------------------------------------------------------------------
+
 
 class TestResolveCronAll:
     def test_overnight_maps_to_1am(self):
@@ -997,9 +1097,11 @@ class TestResolveCronAll:
 # DaemonRunner — shutdown, run basics
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerShutdownExtra:
     def test_shutdown_sets_event(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         assert not dr._shutdown.is_set()
         dr.shutdown()
@@ -1007,6 +1109,7 @@ class TestDaemonRunnerShutdownExtra:
 
     def test_shutdown_idempotent(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         dr.shutdown()
         dr.shutdown()  # calling twice should not raise
@@ -1014,6 +1117,7 @@ class TestDaemonRunnerShutdownExtra:
 
     def test_semaphore_max_concurrent(self):
         from autoresearch.config import GlobalConfig
+
         cfg = GlobalConfig()
         cfg.daemon.max_concurrent = 3
         dr = DaemonRunner(config=cfg)
@@ -1029,6 +1133,7 @@ class TestDaemonRunnerShutdownExtra:
 
     def test_poll_seconds_set_from_config(self):
         from autoresearch.config import GlobalConfig
+
         cfg = GlobalConfig()
         cfg.daemon.poll_interval = "2m"
         dr = DaemonRunner(config=cfg)
@@ -1038,6 +1143,7 @@ class TestDaemonRunnerShutdownExtra:
 # ---------------------------------------------------------------------------
 # is_pid_alive — PermissionError means process exists
 # ---------------------------------------------------------------------------
+
 
 class TestIsPidAlivePermissionErrorExtra:
     def test_permission_error_returns_true(self):
@@ -1056,6 +1162,7 @@ class TestIsPidAlivePermissionErrorExtra:
 # ---------------------------------------------------------------------------
 # check_stale_pid — alive pid not stale
 # ---------------------------------------------------------------------------
+
 
 class TestCheckStalePidAlive:
     def test_alive_pid_returns_false(self, tmp_path):
@@ -1081,6 +1188,7 @@ class TestCheckStalePidAlive:
 # ---------------------------------------------------------------------------
 # read_pid — edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestReadPidEdgeCasesExtra:
     def test_empty_file_returns_none(self, tmp_path):
@@ -1108,6 +1216,7 @@ class TestReadPidEdgeCasesExtra:
 # write_pid / clear_pid
 # ---------------------------------------------------------------------------
 
+
 class TestWriteAndClearPid:
     def test_write_creates_file(self, tmp_path):
         pid_path = tmp_path / "sub" / "daemon.pid"
@@ -1130,9 +1239,11 @@ class TestWriteAndClearPid:
 # DaemonRunner.run — exits immediately when shutdown is pre-set
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerRunEarlyExit:
     def test_run_exits_immediately_if_shutdown_set(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         dr.shutdown()  # pre-set
         # Should return quickly without blocking
@@ -1140,9 +1251,9 @@ class TestDaemonRunnerRunEarlyExit:
 
     def test_run_calls_tick_before_shutdown(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         tick_calls = []
-
 
         def tracking_tick():
             tick_calls.append(1)
@@ -1157,11 +1268,13 @@ class TestDaemonRunnerRunEarlyExit:
 # DaemonRunner._reap_threads — dead vs alive thread
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerReapThreadsExtra:
     def test_finished_thread_removed(self):
         import threading
 
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
 
         done = threading.Event()
@@ -1177,6 +1290,7 @@ class TestDaemonRunnerReapThreadsExtra:
         import threading
 
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
 
         alive_event = threading.Event()
@@ -1194,6 +1308,7 @@ class TestDaemonRunnerReapThreadsExtra:
 # ---------------------------------------------------------------------------
 # is_due — various schedule types
 # ---------------------------------------------------------------------------
+
 
 class TestIsDueMoreScheduleTypes:
     def test_hourly_schedule_due_when_over_an_hour_passed(self):
@@ -1229,6 +1344,7 @@ class TestIsDueMoreScheduleTypes:
 # stop_daemon — alive PID sends SIGTERM
 # ---------------------------------------------------------------------------
 
+
 class TestStopDaemonAlivePid:
     def test_sigterm_sent_to_alive_pid(self, tmp_path):
         pid_path = tmp_path / "alive.pid"
@@ -1249,6 +1365,7 @@ class TestStopDaemonAlivePid:
             result = stop_daemon(pid_path=pid_path)
 
         import signal
+
         assert (99999, signal.SIGTERM) in kill_calls
         assert result is False
 
@@ -1256,6 +1373,7 @@ class TestStopDaemonAlivePid:
 # ---------------------------------------------------------------------------
 # _resolve_cron_expression — hourly and daily
 # ---------------------------------------------------------------------------
+
 
 class TestResolveCronExtraSchedules:
     def test_unknown_type_returns_none(self):
@@ -1283,15 +1401,18 @@ class TestResolveCronExtraSchedules:
 # DaemonRunner — state_path propagation
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerStatePath:
     def test_state_path_stored(self, tmp_path):
         from autoresearch.config import GlobalConfig
+
         sp = tmp_path / "state.json"
         dr = DaemonRunner(config=GlobalConfig(), state_path=sp)
         assert dr._state_path == sp
 
     def test_state_path_none_by_default(self):
         from autoresearch.config import GlobalConfig
+
         dr = DaemonRunner(config=GlobalConfig())
         assert dr._state_path is None
 
@@ -1300,20 +1421,23 @@ class TestDaemonRunnerStatePath:
 # DaemonRunner._run_marker_thread — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestRunMarkerThreadErrors:
     def test_engine_error_logged_not_raised(self, tmp_path):
         from autoresearch.config import GlobalConfig
         from autoresearch.engine import EngineError
         from autoresearch.state import AppState, TrackedMarker
 
-        state = AppState(markers=[
-            TrackedMarker(
-                id="repo:marker",
-                repo_path=str(tmp_path),
-                repo_name="repo",
-                marker_name="marker",
-            )
-        ])
+        state = AppState(
+            markers=[
+                TrackedMarker(
+                    id="repo:marker",
+                    repo_path=str(tmp_path),
+                    repo_name="repo",
+                    marker_name="marker",
+                )
+            ]
+        )
         tracked = state.markers[0]
         marker = MagicMock()
 
@@ -1333,14 +1457,16 @@ class TestRunMarkerThreadErrors:
         from autoresearch.config import GlobalConfig
         from autoresearch.state import AppState, TrackedMarker
 
-        state = AppState(markers=[
-            TrackedMarker(
-                id="repo:marker",
-                repo_path=str(tmp_path),
-                repo_name="repo",
-                marker_name="marker",
-            )
-        ])
+        state = AppState(
+            markers=[
+                TrackedMarker(
+                    id="repo:marker",
+                    repo_path=str(tmp_path),
+                    repo_name="repo",
+                    marker_name="marker",
+                )
+            ]
+        )
         tracked = state.markers[0]
         marker = MagicMock()
 
@@ -1350,7 +1476,9 @@ class TestRunMarkerThreadErrors:
             patch("autoresearch.daemon.load_state", return_value=state),
             patch("autoresearch.daemon.get_tracked", return_value=tracked),
             patch("autoresearch.daemon.get_agent_runner"),
-            patch("autoresearch.daemon.run_marker", side_effect=RuntimeError("unexpected")),
+            patch(
+                "autoresearch.daemon.run_marker", side_effect=RuntimeError("unexpected")
+            ),
         ):
             dr._semaphore.acquire()
             dr._run_marker_thread(tracked, marker)
@@ -1385,14 +1513,16 @@ class TestRunMarkerThreadErrors:
         from autoresearch.engine import EngineError
         from autoresearch.state import AppState, TrackedMarker
 
-        state = AppState(markers=[
-            TrackedMarker(
-                id="repo:m",
-                repo_path=str(tmp_path),
-                repo_name="repo",
-                marker_name="m",
-            )
-        ])
+        state = AppState(
+            markers=[
+                TrackedMarker(
+                    id="repo:m",
+                    repo_path=str(tmp_path),
+                    repo_name="repo",
+                    marker_name="m",
+                )
+            ]
+        )
         tracked = state.markers[0]
         marker = MagicMock()
 
@@ -1415,6 +1545,7 @@ class TestRunMarkerThreadErrors:
 # ---------------------------------------------------------------------------
 # DaemonRunner — shutdown after single tick
 # ---------------------------------------------------------------------------
+
 
 class TestDaemonRunnerShutdownBehavior:
     def test_shutdown_set_stops_loop(self):
@@ -1453,6 +1584,7 @@ class TestDaemonRunnerShutdownBehavior:
 # is_pid_alive — permission error returns True
 # ---------------------------------------------------------------------------
 
+
 class TestIsPidAlivePermissionError:
     def test_permission_error_means_alive(self):
         with patch("os.kill", side_effect=PermissionError):
@@ -1468,6 +1600,7 @@ class TestIsPidAlivePermissionError:
 # ---------------------------------------------------------------------------
 # check_stale_pid — edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestCheckStalePidEdgeCases:
     def test_no_pid_file_returns_false(self, tmp_path):
@@ -1496,15 +1629,18 @@ class TestCheckStalePidEdgeCases:
 # DaemonRunner — poll seconds from config
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerPollSeconds:
     def test_poll_seconds_parsed_from_config(self):
         from autoresearch.config import DaemonConfig, GlobalConfig
+
         config = GlobalConfig(daemon=DaemonConfig(poll_interval="2m", max_concurrent=1))
         dr = DaemonRunner(config=config)
         assert dr._poll_seconds == 120
 
     def test_max_concurrent_sets_semaphore(self):
         from autoresearch.config import DaemonConfig, GlobalConfig
+
         config = GlobalConfig(daemon=DaemonConfig(poll_interval="1m", max_concurrent=3))
         dr = DaemonRunner(config=config)
         assert dr._semaphore._value == 3
@@ -1525,7 +1661,7 @@ class TestDaemonizeWin32Guard:
             patch.object(sys, "platform", "win32"),
             pytest.raises(RuntimeError, match="not supported on Windows"),
         ):
-                daemonize()
+            daemonize()
 
     def test_no_error_on_linux(self, tmp_path):
         import sys
@@ -1539,7 +1675,7 @@ class TestDaemonizeWin32Guard:
             patch("os.fork", side_effect=OSError("mock fork blocked")),
             pytest.raises(OSError, match="mock fork blocked"),
         ):
-                    daemonize(log_path=tmp_path / "log", pid_path=tmp_path / "pid")
+            daemonize(log_path=tmp_path / "log", pid_path=tmp_path / "pid")
 
 
 # ---------------------------------------------------------------------------
@@ -1657,7 +1793,7 @@ class TestDaemonizeFirstChildPath:
             call_num = len(fork_calls)
             fork_calls.append(call_num)
             if call_num == 0:
-                return 0      # first fork: we are child
+                return 0  # first fork: we are child
             else:
                 return 42000  # second fork: we are first child, pid2 > 0
 
@@ -1670,13 +1806,18 @@ class TestDaemonizeFirstChildPath:
             patch("os.close"),
             patch("os.setsid"),
             patch("os.write", side_effect=lambda fd, data: written_data.append(data)),
-            patch("os._exit", side_effect=lambda code: exit_codes.append(code) or (_ for _ in ()).throw(SystemExit(code))),
+            patch(
+                "os._exit",
+                side_effect=lambda code: (
+                    exit_codes.append(code) or (_ for _ in ()).throw(SystemExit(code))
+                ),
+            ),
             pytest.raises(SystemExit),
         ):
-                daemonize(
-                    log_path=tmp_path / "daemon.log",
-                    pid_path=tmp_path / "daemon.pid",
-                )
+            daemonize(
+                log_path=tmp_path / "daemon.log",
+                pid_path=tmp_path / "daemon.pid",
+            )
 
         assert b"42000" in written_data
         assert 0 in exit_codes
@@ -1703,13 +1844,16 @@ class TestDaemonizeFirstChildPath:
             patch("os.close", side_effect=close_side_effect),
             patch("os.setsid"),
             patch("os.write"),
-            patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            patch(
+                "os._exit",
+                side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code)),
+            ),
             pytest.raises(SystemExit),
         ):
-                daemonize(
-                    log_path=tmp_path / "daemon.log",
-                    pid_path=tmp_path / "daemon.pid",
-                )
+            daemonize(
+                log_path=tmp_path / "daemon.log",
+                pid_path=tmp_path / "daemon.pid",
+            )
 
         assert fake_read_fd in closed
 
@@ -1719,6 +1863,7 @@ class TestDaemonizeGrandchildPath:
 
     def _make_mock_state(self):
         from autoresearch.state import AppState, DaemonState
+
         state = AppState(daemon=DaemonState())
         return state
 
@@ -1770,13 +1915,18 @@ class TestDaemonizeGrandchildPath:
             patch("autoresearch.daemon.DaemonRunner", return_value=mock_runner),
             patch("signal.signal"),
             patch("autoresearch.daemon.clear_pid"),
-            patch("os._exit", side_effect=lambda code: exit_codes.append(code) or (_ for _ in ()).throw(SystemExit(code))),
+            patch(
+                "os._exit",
+                side_effect=lambda code: (
+                    exit_codes.append(code) or (_ for _ in ()).throw(SystemExit(code))
+                ),
+            ),
             pytest.raises(SystemExit),
         ):
-                daemonize(
-                    log_path=tmp_path / "daemon.log",
-                    pid_path=tmp_path / "daemon.pid",
-                )
+            daemonize(
+                log_path=tmp_path / "daemon.log",
+                pid_path=tmp_path / "daemon.pid",
+            )
 
         mock_runner.run.assert_called_once()
         assert 0 in exit_codes
@@ -1808,7 +1958,12 @@ class TestDaemonizeGrandchildPath:
             patch("os.getpid", return_value=55555),
             patch("autoresearch.daemon.write_pid"),
             patch("autoresearch.daemon.load_state", return_value=mock_state),
-            patch("autoresearch.daemon.save_state", side_effect=lambda s, p: saved_states.append((s.daemon.running, s.daemon.pid))),
+            patch(
+                "autoresearch.daemon.save_state",
+                side_effect=lambda s, p: saved_states.append(
+                    (s.daemon.running, s.daemon.pid)
+                ),
+            ),
             patch("os.open", return_value=8),
             patch("os.dup2"),
             patch("sys.stdin", mock_stdin),
@@ -1819,13 +1974,16 @@ class TestDaemonizeGrandchildPath:
             patch("autoresearch.daemon.DaemonRunner", return_value=mock_runner),
             patch("signal.signal"),
             patch("autoresearch.daemon.clear_pid"),
-            patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            patch(
+                "os._exit",
+                side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code)),
+            ),
             pytest.raises(SystemExit),
         ):
-                daemonize(
-                    log_path=tmp_path / "daemon.log",
-                    pid_path=tmp_path / "daemon.pid",
-                )
+            daemonize(
+                log_path=tmp_path / "daemon.log",
+                pid_path=tmp_path / "daemon.pid",
+            )
 
         assert len(saved_states) >= 1
         # First save: daemon set to running=True with correct PID
@@ -1859,7 +2017,10 @@ class TestDaemonizeGrandchildPath:
             patch("os.getpid", return_value=66666),
             patch("autoresearch.daemon.write_pid"),
             patch("autoresearch.daemon.load_state", return_value=mock_state),
-            patch("autoresearch.daemon.save_state", side_effect=lambda s, p: saved_states.append(s)),
+            patch(
+                "autoresearch.daemon.save_state",
+                side_effect=lambda s, p: saved_states.append(s),
+            ),
             patch("os.open", return_value=7),
             patch("os.dup2"),
             patch("sys.stdin", mock_stdin),
@@ -1869,14 +2030,20 @@ class TestDaemonizeGrandchildPath:
             patch("logging.basicConfig"),
             patch("autoresearch.daemon.DaemonRunner", return_value=mock_runner),
             patch("signal.signal"),
-            patch("autoresearch.daemon.clear_pid", side_effect=lambda p: clear_pid_calls.append(p)),
-            patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            patch(
+                "autoresearch.daemon.clear_pid",
+                side_effect=lambda p: clear_pid_calls.append(p),
+            ),
+            patch(
+                "os._exit",
+                side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code)),
+            ),
             pytest.raises(SystemExit),
         ):
-                daemonize(
-                    log_path=tmp_path / "daemon.log",
-                    pid_path=tmp_path / "daemon.pid",
-                )
+            daemonize(
+                log_path=tmp_path / "daemon.log",
+                pid_path=tmp_path / "daemon.pid",
+            )
 
         assert len(clear_pid_calls) == 1
         assert any(s.daemon.running is False for s in saved_states)
@@ -1915,17 +2082,23 @@ class TestDaemonizeGrandchildPath:
             patch("builtins.open", return_value=mock_log_fd),
             patch("logging.basicConfig"),
             patch("autoresearch.daemon.DaemonRunner", return_value=mock_runner),
-            patch("signal.signal", side_effect=lambda s, h: registered_signals.append(s)),
+            patch(
+                "signal.signal", side_effect=lambda s, h: registered_signals.append(s)
+            ),
             patch("autoresearch.daemon.clear_pid"),
-            patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            patch(
+                "os._exit",
+                side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code)),
+            ),
             pytest.raises(SystemExit),
         ):
-                daemonize(
-                    log_path=tmp_path / "daemon.log",
-                    pid_path=tmp_path / "daemon.pid",
-                )
+            daemonize(
+                log_path=tmp_path / "daemon.log",
+                pid_path=tmp_path / "daemon.pid",
+            )
 
         import signal as sig
+
         assert sig.SIGTERM in registered_signals
         assert sig.SIGINT in registered_signals
 
@@ -1971,13 +2144,16 @@ class TestDaemonizeGrandchildPath:
             patch("autoresearch.daemon.DaemonRunner", return_value=mock_runner),
             patch("signal.signal", side_effect=capture_signal),
             patch("autoresearch.daemon.clear_pid"),
-            patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            patch(
+                "os._exit",
+                side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code)),
+            ),
             pytest.raises(SystemExit),
         ):
-                daemonize(
-                    log_path=tmp_path / "daemon.log",
-                    pid_path=tmp_path / "daemon.pid",
-                )
+            daemonize(
+                log_path=tmp_path / "daemon.log",
+                pid_path=tmp_path / "daemon.pid",
+            )
 
         # Invoke the captured SIGTERM handler to cover lines 310-311
         assert sig.SIGTERM in registered_handlers
@@ -2062,18 +2238,21 @@ class TestResolveCronExpressionMapValues:
     def test_overnight_is_1am_daily(self):
         schedule = _make_schedule("overnight")
         from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
+
         result = _resolve_cron_expression(schedule)
         assert result == SCHEDULE_CRON_MAP["overnight"]
 
     def test_weekend_is_saturday_1am(self):
         schedule = _make_schedule("weekend")
         from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
+
         result = _resolve_cron_expression(schedule)
         assert result == SCHEDULE_CRON_MAP["weekend"]
 
     def test_cron_with_empty_string_falls_back_to_map(self):
         schedule = _make_schedule("overnight", cron="")
         from autoresearch.daemon import _resolve_cron_expression
+
         # type="overnight", cron is falsy, so returns map value
         result = _resolve_cron_expression(schedule)
         assert result == "0 1 * * *"
@@ -2087,6 +2266,7 @@ class TestResolveCronExpressionMapValues:
 class TestDaemonRunnerReapEmpty:
     def test_reap_with_no_active_runs_is_noop(self):
         from autoresearch.config import GlobalConfig
+
         with patch("autoresearch.daemon.load_config", return_value=GlobalConfig()):
             runner = DaemonRunner()
         assert runner._active_runs == {}
@@ -2095,6 +2275,7 @@ class TestDaemonRunnerReapEmpty:
 
     def test_reap_removes_finished_thread(self):
         from autoresearch.config import GlobalConfig
+
         with patch("autoresearch.daemon.load_config", return_value=GlobalConfig()):
             runner = DaemonRunner()
         mock_thread = MagicMock()
@@ -2105,6 +2286,7 @@ class TestDaemonRunnerReapEmpty:
 
     def test_reap_keeps_alive_thread(self):
         from autoresearch.config import GlobalConfig
+
         with patch("autoresearch.daemon.load_config", return_value=GlobalConfig()):
             runner = DaemonRunner()
         mock_thread = MagicMock()
@@ -2170,6 +2352,7 @@ class TestReadPidEdgeCases:
 class TestIsDueAdditionalTypes:
     def test_is_due_type_hourly_past_minute(self):
         from autoresearch.daemon import is_due
+
         s = _make_schedule("hourly")
         now = datetime(2026, 3, 31, 14, 5, 0, tzinfo=timezone.utc)
         result = is_due(s, now)
@@ -2177,6 +2360,7 @@ class TestIsDueAdditionalTypes:
 
     def test_is_due_with_future_cron(self):
         from autoresearch.daemon import is_due
+
         s = _make_schedule("cron", cron="0 3 * * *")
         now = datetime(2026, 3, 31, 2, 0, 0, tzinfo=timezone.utc)
         result = is_due(s, now)
@@ -2184,6 +2368,7 @@ class TestIsDueAdditionalTypes:
 
     def test_is_due_with_past_cron_last_ran_recently(self):
         from autoresearch.daemon import is_due
+
         s = _make_schedule("cron", cron="0 2 * * *")
         now = datetime(2026, 3, 31, 2, 30, 0, tzinfo=timezone.utc)
         result = is_due(s, now)
@@ -2191,18 +2376,21 @@ class TestIsDueAdditionalTypes:
 
     def test_is_due_overnight_returns_bool(self):
         from autoresearch.daemon import is_due
+
         s = _make_schedule("overnight")
         now = datetime(2026, 3, 31, 1, 5, 0, tzinfo=timezone.utc)
         assert isinstance(is_due(s, now), bool)
 
     def test_is_due_weekend_returns_bool(self):
         from autoresearch.daemon import is_due
+
         s = _make_schedule("weekend")
         now = datetime(2026, 4, 5, 1, 5, 0, tzinfo=timezone.utc)
         assert isinstance(is_due(s, now), bool)
 
     def test_is_due_daily_returns_bool(self):
         from autoresearch.daemon import is_due
+
         s = _make_schedule("daily")
         now = datetime(2026, 3, 31, 12, 0, 0, tzinfo=timezone.utc)
         assert isinstance(is_due(s, now), bool)
@@ -2216,21 +2404,25 @@ class TestIsDueAdditionalTypes:
 class TestResolveCronAllMapKeys:
     def test_overnight_resolves(self):
         from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
+
         s = _make_schedule("overnight")
         assert _resolve_cron_expression(s) == SCHEDULE_CRON_MAP["overnight"]
 
     def test_weekend_resolves(self):
         from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
+
         s = _make_schedule("weekend")
         assert _resolve_cron_expression(s) == SCHEDULE_CRON_MAP["weekend"]
 
     def test_cron_type_uses_cron_field(self):
         from autoresearch.daemon import _resolve_cron_expression
+
         s = _make_schedule("cron", cron="5 4 * * 0")
         assert _resolve_cron_expression(s) == "5 4 * * 0"
 
     def test_unknown_type_returns_none_or_fallback(self):
         from autoresearch.daemon import _resolve_cron_expression
+
         s = _make_schedule("unknown", cron="15 6 * * 1")
         result = _resolve_cron_expression(s)
         # unknown type not in map, cron field not used by default
@@ -2245,6 +2437,7 @@ class TestResolveCronAllMapKeys:
 class TestDaemonRunnerJoinThreads:
     def test_join_alive_thread_is_called(self):
         from autoresearch.config import GlobalConfig
+
         with patch("autoresearch.daemon.load_config", return_value=GlobalConfig()):
             runner = DaemonRunner()
         mock_thread = MagicMock()
@@ -2255,6 +2448,7 @@ class TestDaemonRunnerJoinThreads:
 
     def test_join_no_threads_no_error(self):
         from autoresearch.config import GlobalConfig
+
         with patch("autoresearch.daemon.load_config", return_value=GlobalConfig()):
             runner = DaemonRunner()
         runner._join_threads(timeout=0.01)  # should not raise
@@ -2294,15 +2488,18 @@ class TestIsPidAliveBasic:
         import os
 
         from autoresearch.daemon import is_pid_alive
+
         assert is_pid_alive(os.getpid()) is True
 
     def test_zero_pid_is_not_alive(self):
         from autoresearch.daemon import is_pid_alive
+
         result = is_pid_alive(0)
         assert isinstance(result, bool)
 
     def test_very_large_pid_not_alive(self):
         from autoresearch.daemon import is_pid_alive
+
         result = is_pid_alive(9999999)
         assert result is False
 
@@ -2311,9 +2508,11 @@ class TestIsPidAliveBasic:
 # _resolve_cron_expression — more schedule types
 # ---------------------------------------------------------------------------
 
+
 class TestResolveCronExpressionExtended:
     def _make_schedule(self, type_, cron=None):
         from autoresearch.marker import Schedule
+
         return Schedule(type=type_, cron=cron)
 
     def test_on_demand_returns_none(self):
@@ -2350,9 +2549,11 @@ class TestResolveCronExpressionExtended:
 # is_due — extended scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestIsDueExtended:
     def _make_schedule(self, type_, cron=None, duration_hours=None):
         from autoresearch.marker import Schedule
+
         return Schedule(type=type_, cron=cron, duration_hours=duration_hours)
 
     def test_on_demand_is_never_due(self):
@@ -2393,7 +2594,10 @@ class TestIsDueExtended:
     def test_invalid_cron_expression_returns_false(self):
         now = datetime.now(timezone.utc)
         last = (now - timedelta(hours=1)).isoformat()
-        assert is_due(self._make_schedule("cron", "invalid cron here!!!"), last, now) is False
+        assert (
+            is_due(self._make_schedule("cron", "invalid cron here!!!"), last, now)
+            is False
+        )
 
     def test_naive_last_run_treated_as_utc(self):
         now = datetime.now(timezone.utc)
@@ -2404,6 +2608,7 @@ class TestIsDueExtended:
 # ---------------------------------------------------------------------------
 # read_pid / write_pid — additional edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestReadPidEdgeCasesExtra2:
     def test_negative_number_returns_none(self, tmp_path):
@@ -2440,6 +2645,7 @@ class TestReadPidEdgeCasesExtra2:
 # check_stale_pid — extended
 # ---------------------------------------------------------------------------
 
+
 class TestCheckStalePidExtended:
     def test_no_pid_file_returns_false(self, tmp_path):
         pid_path = tmp_path / "missing.pid"
@@ -2459,9 +2665,11 @@ class TestCheckStalePidExtended:
 # is_pid_alive — more scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestIsPidAliveExtended:
     def test_current_process_alive(self):
         import os
+
         assert is_pid_alive(os.getpid()) is True
 
     def test_pid_1_alive_on_linux(self):
@@ -2481,6 +2689,7 @@ class TestIsPidAliveExtended:
 # ---------------------------------------------------------------------------
 # _resolve_cron_expression — comprehensive
 # ---------------------------------------------------------------------------
+
 
 class TestResolveCronExpressionAll:
     def _make_sched(self, stype, cron=None):
@@ -2520,6 +2729,7 @@ class TestResolveCronExpressionAll:
 # ---------------------------------------------------------------------------
 # is_due — additional boundary conditions
 # ---------------------------------------------------------------------------
+
 
 class TestIsDueBoundaries:
     def _make_sched(self, stype, cron=None):
@@ -2577,6 +2787,7 @@ class TestIsDueBoundaries:
 # DaemonRunner — attribute checks
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerAttributes:
     def _make_runner(self):
         config = MagicMock()
@@ -2588,6 +2799,7 @@ class TestDaemonRunnerAttributes:
     def test_has_shutdown_event(self):
         r = self._make_runner()
         import threading
+
         assert isinstance(r._shutdown, threading.Event)
 
     def test_has_active_runs_dict(self):
@@ -2615,6 +2827,7 @@ class TestDaemonRunnerAttributes:
 # ---------------------------------------------------------------------------
 # write_pid / read_pid — round trips
 # ---------------------------------------------------------------------------
+
 
 class TestPidRoundTripExtended:
     def test_pid_1(self, tmp_path):
@@ -2658,6 +2871,7 @@ class TestPidRoundTripExtended:
 # Additional is_due tests
 # ---------------------------------------------------------------------------
 
+
 class TestIsDueOvernightSchedule:
     def _make_sched(self, t, cron=None):
         s = MagicMock()
@@ -2688,6 +2902,7 @@ class TestIsDueOvernightSchedule:
 
     def test_invalid_cron_returns_false(self):
         from datetime import datetime, timezone
+
         s = self._make_sched("cron", "invalid-cron-expression")
         now = datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
         last = "2024-06-15T11:00:00+00:00"
@@ -2714,6 +2929,7 @@ class TestIsDueInvalidLastRun:
 # ---------------------------------------------------------------------------
 # PID management — edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestPidManagementExtendedExtra:
     def test_write_creates_correct_content(self, tmp_path):
@@ -2760,6 +2976,7 @@ class TestCheckStalePidBranches:
 
     def test_alive_pid_returns_false(self, tmp_path):
         import os
+
         p = tmp_path / "alive.pid"
         write_pid(os.getpid(), p)
         assert check_stale_pid(p) is False
@@ -2768,6 +2985,7 @@ class TestCheckStalePidBranches:
 # ---------------------------------------------------------------------------
 # DaemonRunner — additional attribute and config tests
 # ---------------------------------------------------------------------------
+
 
 class TestDaemonRunnerConfigDefaults:
     def test_runner_has_semaphore(self):
@@ -2853,9 +3071,11 @@ class TestDaemonRunnerReapThreadsVariants:
 # is_pid_alive — coverage
 # ---------------------------------------------------------------------------
 
+
 class TestIsPidAliveVariants:
     def test_current_process_is_alive(self):
         import os
+
         assert is_pid_alive(os.getpid()) is True
 
     def test_very_large_pid_not_alive(self):
@@ -3011,6 +3231,7 @@ class TestPidManagementVariantsB:
 
     def test_is_pid_alive_current(self):
         import os
+
         assert is_pid_alive(os.getpid()) is True
 
     def test_is_pid_alive_dead_pid(self):
@@ -3020,6 +3241,7 @@ class TestPidManagementVariantsB:
 class TestDaemonRunnerAttributesB:
     def _make_runner(self):
         from autoresearch.config import GlobalConfig
+
         with patch("autoresearch.daemon.load_config", return_value=GlobalConfig()):
             return DaemonRunner()
 
@@ -3084,9 +3306,11 @@ class TestStopDaemonVariants:
 # NEW BATCH: is_pid_alive more variants
 # ---------------------------------------------------------------------------
 
+
 class TestIsPidAliveNewBatch:
     def test_current_process_alive(self):
         import os
+
         assert is_pid_alive(os.getpid()) is True
 
     def test_zero_pid_not_alive(self):
@@ -3110,6 +3334,7 @@ class TestIsPidAliveNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: write_pid / read_pid round-trip extended
 # ---------------------------------------------------------------------------
+
 
 class TestPidRoundTripNewBatch:
     def test_write_and_read_basic(self, tmp_path):
@@ -3153,6 +3378,7 @@ class TestPidRoundTripNewBatch:
 # NEW BATCH: check_stale_pid extended
 # ---------------------------------------------------------------------------
 
+
 class TestCheckStalePidNewBatch:
     def test_no_pid_file_returns_false(self, tmp_path):
         p = tmp_path / "none.pid"
@@ -3160,6 +3386,7 @@ class TestCheckStalePidNewBatch:
 
     def test_live_pid_returns_false(self, tmp_path):
         import os
+
         p = tmp_path / "live.pid"
         write_pid(os.getpid(), p)
         assert check_stale_pid(p) is False
@@ -3180,6 +3407,7 @@ class TestCheckStalePidNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: is_due extended time-based
 # ---------------------------------------------------------------------------
+
 
 class TestIsDueNewBatch:
     def _now(self):
@@ -3217,6 +3445,7 @@ class TestIsDueNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: _resolve_cron_expression map checks
 # ---------------------------------------------------------------------------
+
 
 class TestResolveCronNewBatch:
     def test_overnight_resolves(self):
@@ -3266,6 +3495,7 @@ class TestResolveCronNewBatch:
 # NEW BATCH: DaemonRunner attributes
 # ---------------------------------------------------------------------------
 
+
 class TestDaemonRunnerNewBatch:
     def _make_runner(self):
         return DaemonRunner()
@@ -3296,6 +3526,7 @@ class TestDaemonRunnerNewBatch:
 # NEW BATCH: stop_daemon additional
 # ---------------------------------------------------------------------------
 
+
 class TestStopDaemonNewBatch:
     def test_no_file_returns_false(self, tmp_path):
         p = tmp_path / "no.pid"
@@ -3315,6 +3546,7 @@ class TestStopDaemonNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: is_due and pid helpers additional
 # ---------------------------------------------------------------------------
+
 
 class TestIsDueAdditional:
     def test_on_demand_never_due(self):
@@ -3443,5 +3675,6 @@ class TestDaemonRunnerAdditional:
 
     def test_semaphore_is_threading_semaphore(self, tmp_path):
         import threading
+
         dr = DaemonRunner(state_path=tmp_path / "state.json")
         assert isinstance(dr._semaphore, threading.Semaphore)

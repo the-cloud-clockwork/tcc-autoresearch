@@ -41,14 +41,16 @@ def read_results(repo_path: Path, marker_name: str) -> list[ExperimentResult]:
     with open(path, newline="") as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
-            results.append(ExperimentResult(
-                commit=row["commit"],
-                metric=float(row["metric"]),
-                guard=row["guard"],
-                status=row["status"],
-                confidence=row["confidence"],
-                description=row["description"],
-            ))
+            results.append(
+                ExperimentResult(
+                    commit=row["commit"],
+                    metric=float(row["metric"]),
+                    guard=row["guard"],
+                    status=row["status"],
+                    confidence=row["confidence"],
+                    description=row["description"],
+                )
+            )
     return results
 
 
@@ -61,14 +63,11 @@ def append_result(repo_path: Path, marker_name: str, result: ExperimentResult) -
         writer = csv.writer(f, delimiter="\t")
         if write_header:
             writer.writerow(TSV_HEADER)
-        writer.writerow([
-            result.commit,
-            result.metric,
-            result.guard,
-            result.status,
-            result.confidence,
-            result.description,
-        ])
+        writer.writerow(
+            [
+                result.commit,
+                result.metric,
+                result.guard,
 
 
 def get_latest_metric(results: list[ExperimentResult]) -> float | None:

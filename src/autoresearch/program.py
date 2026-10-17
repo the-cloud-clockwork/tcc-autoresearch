@@ -76,7 +76,9 @@ def generate_program(
         Complete program.md content as a string.
     """
     if current_best is not None:
-        baseline_line = f"Baseline: {marker.metric.baseline}    Current best: {current_best}"
+        baseline_line = (
+            f"Baseline: {marker.metric.baseline}    Current best: {current_best}"
+        )
     else:
         baseline_line = f"Baseline: {marker.metric.baseline} (no experiments yet)"
 
@@ -109,7 +111,8 @@ def _fetch_issues(marker: Marker, repo_path: Path | None) -> str:
     try:
         result = subprocess.run(
             ["bash", "-c", cmd],
-            check=False, cwd=repo_path or Path("."),
+            check=False,
+            cwd=repo_path or Path("."),
             capture_output=True,
             text=True,
             timeout=60,

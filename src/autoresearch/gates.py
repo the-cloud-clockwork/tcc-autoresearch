@@ -41,12 +41,15 @@ class GateChainResult:
         return " | ".join(parts)
 
 
-def _run_command(command: str, cwd: Path | None = None, timeout: int = 300) -> tuple[int, str]:
+def _run_command(
+    command: str, cwd: Path | None = None, timeout: int = 300
+) -> tuple[int, str]:
     """Run a shell command, return (exit_code, output)."""
     try:
         result = subprocess.run(
             command,
-            check=False, shell=True,
+            check=False,
+            shell=True,
             capture_output=True,
             text=True,
             cwd=cwd,
@@ -84,11 +87,15 @@ def gate_quality_gate(
 ) -> GateResult:
     """Gate 2: quality gate passes (uses marker.guard.command)."""
     if not marker.guard.command:
-        return GateResult(name="quality_gate", passed=True, reason="no guard configured")
+        return GateResult(
+            name="quality_gate", passed=True, reason="no guard configured"
+        )
 
     exit_code, output = _run_command(marker.guard.command, cwd=repo_path)
     if exit_code == 0:
-        return GateResult(name="quality_gate", passed=True, reason="quality gate OK", value="PASS")
+        return GateResult(
+            name="quality_gate", passed=True, reason="quality gate OK", value="PASS"
+        )
     return GateResult(
         name="quality_gate",
         passed=False,
@@ -97,19 +104,21 @@ def gate_quality_gate(
     )
 
 
-def gate_security(
-    repo_path: Path, marker: Marker, run_result: RunResult
-) -> GateResult:
+def gate_security(repo_path: Path, marker: Marker, run_result: RunResult) -> GateResult:
     """Gate 3: zero vulnerabilities + acceptable security rating."""
     auto_merge = getattr(marker, "auto_merge", None)
     cmd = getattr(auto_merge, "security_command", None) if auto_merge else None
 
     if not cmd:
-        return GateResult(name="security", passed=True, reason="no security gate configured")
+        return GateResult(
+            name="security", passed=True, reason="no security gate configured"
+        )
 
     exit_code, output = _run_command(cmd, cwd=repo_path)
     if exit_code == 0:
-        return GateResult(name="security", passed=True, reason="security OK", value="PASS")
+        return GateResult(
+            name="security", passed=True, reason="security OK", value="PASS"
+        )
     return GateResult(
         name="security",
         passed=False,
@@ -118,19 +127,21 @@ def gate_security(
     )
 
 
-def gate_tests(
-    repo_path: Path, marker: Marker, run_result: RunResult
-) -> GateResult:
+def gate_tests(repo_path: Path, marker: Marker, run_result: RunResult) -> GateResult:
     """Gate 4: project test suite passes."""
     auto_merge = getattr(marker, "auto_merge", None)
     cmd = getattr(auto_merge, "test_command", None) if auto_merge else None
 
     if not cmd:
-        return GateResult(name="tests", passed=True, reason="no test command configured")
+        return GateResult(
+            name="tests", passed=True, reason="no test command configured"
+        )
 
     exit_code, output = _run_command(cmd, cwd=repo_path, timeout=600)
     if exit_code == 0:
-        return GateResult(name="tests", passed=True, reason="tests passed", value="PASS")
+        return GateResult(
+            name="tests", passed=True, reason="tests passed", value="PASS"
+        )
     return GateResult(
         name="tests",
         passed=False,
@@ -187,7 +198,11 @@ def run_gate_chain(
     """Run gates in sequence. Short-circuits on first failure."""
     if gate_names is None:
         auto_merge = getattr(marker, "auto_merge", None)
-        gate_names = getattr(auto_merge, "gates", list(BUILTIN_GATES.keys())) if auto_merge else list(BUILTIN_GATES.keys())
+        gate_names = (
+            getattr(auto_merge, "gates", list(BUILTIN_GATES.keys()))
+            if auto_merge
+            else list(BUILTIN_GATES.keys())
+        )
 
     results: list[GateResult] = []
 
@@ -199,7 +214,9 @@ def run_gate_chain(
 
         result = gate_fn(repo_path, marker, run_result)
         results.append(result)
-        logger.info(f"Gate {result.name}: {'PASS' if result.passed else 'FAIL'} — {result.reason}")
+        logger.info(
+            f"Gate {result.name}: {'PASS' if result.passed else 'FAIL'} — {result.reason}"
+        )
 
         if not result.passed:
             return GateChainResult(all_passed=False, gates=results)

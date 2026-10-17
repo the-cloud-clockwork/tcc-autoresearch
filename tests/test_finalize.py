@@ -29,21 +29,56 @@ def git_repo(tmp_path):
         "GIT_COMMITTER_EMAIL": "test@test.com",
         "HOME": str(tmp_path),
     }
-    subprocess.run(["git", "init", "-b", "main"], cwd=tmp_path, env=env, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        check=True,
+    )
     # Initial commit
     (tmp_path / "readme.txt").write_text("init")
-    subprocess.run(["git", "add", "."], cwd=tmp_path, env=env, capture_output=True, check=True)
-    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, env=env, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "add", "."], cwd=tmp_path, env=env, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "initial"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        check=True,
+    )
 
     # Create a branch with some commits
-    subprocess.run(["git", "checkout", "-b", "autoresearch/test-marker-mar30"], cwd=tmp_path, env=env, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "checkout", "-b", "autoresearch/test-marker-mar30"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        check=True,
+    )
 
     commits = []
     for i in range(3):
         (tmp_path / f"file{i}.py").write_text(f"content {i}")
-        subprocess.run(["git", "add", "."], cwd=tmp_path, env=env, capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", f"experiment {i}"], cwd=tmp_path, env=env, capture_output=True, check=True)
-        result = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=tmp_path, env=env, capture_output=True, text=True, check=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=tmp_path, env=env, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", f"experiment {i}"],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            check=True,
+        )
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         commits.append(result.stdout.strip())
 
     return tmp_path, env, commits
@@ -52,7 +87,14 @@ def git_repo(tmp_path):
 class TestFinalizeMarker:
     def test_no_kept_results(self, tmp_path):
         results = [
-            ExperimentResult(commit="abc1234", metric=10.0, guard="pass", status="discard", confidence="--", description="test"),
+            ExperimentResult(
+                commit="abc1234",
+                metric=10.0,
+                guard="pass",
+                status="discard",
+                confidence="--",
+                description="test",
+            ),
         ]
         branches = finalize_marker(tmp_path, "test-marker", results)
         assert branches == []
@@ -64,10 +106,19 @@ class TestFinalizeMarker:
     def test_finalize_single_kept(self, git_repo):
         repo_path, _env, commits = git_repo
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="optimization A"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="optimization A",
+            ),
         ]
         branches = finalize_marker(
-            repo_path, "test-marker", results,
+            repo_path,
+            "test-marker",
+            results,
             source_branch="autoresearch/test-marker-mar30",
         )
         assert len(branches) == 1
@@ -77,11 +128,27 @@ class TestFinalizeMarker:
     def test_finalize_groups_by_description(self, git_repo):
         repo_path, _env, commits = git_repo
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="optimization A"),
-            ExperimentResult(commit=commits[1], metric=15.0, guard="pass", status="keep", confidence="--", description="optimization B"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="optimization A",
+            ),
+            ExperimentResult(
+                commit=commits[1],
+                metric=15.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="optimization B",
+            ),
         ]
         branches = finalize_marker(
-            repo_path, "test-marker", results,
+            repo_path,
+            "test-marker",
+            results,
             source_branch="autoresearch/test-marker-mar30",
         )
         # Two different descriptions = two branches
@@ -90,22 +157,41 @@ class TestFinalizeMarker:
     def test_does_not_delete_original_branch(self, git_repo):
         repo_path, _env, commits = git_repo
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="test"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="test",
+            ),
         ]
         finalize_marker(
-            repo_path, "test-marker", results,
+            repo_path,
+            "test-marker",
+            results,
             source_branch="autoresearch/test-marker-mar30",
         )
         # Original branch should still exist
         result = subprocess.run(
             ["git", "branch", "--list", "autoresearch/test-marker-mar30"],
-            check=False, cwd=repo_path, capture_output=True, text=True,
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
         )
         assert "autoresearch/test-marker-mar30" in result.stdout
 
     def test_skips_baseline_commits(self, tmp_path):
         results = [
-            ExperimentResult(commit="--", metric=10.0, guard="--", status="keep", confidence="--", description="baseline"),
+            ExperimentResult(
+                commit="--",
+                metric=10.0,
+                guard="--",
+                status="keep",
+                confidence="--",
+                description="baseline",
+            ),
         ]
         branches = finalize_marker(tmp_path, "test-marker", results)
         assert branches == []
@@ -122,11 +208,17 @@ class TestUniqueFinalBranch:
         # Create the base branch so it conflicts
         subprocess.run(
             ["git", "checkout", "-b", "conflict-branch"],
-            cwd=repo_path, env=env, capture_output=True, check=True,
+            cwd=repo_path,
+            env=env,
+            capture_output=True,
+            check=True,
         )
         subprocess.run(
             ["git", "checkout", "autoresearch/test-marker-mar30"],
-            cwd=repo_path, env=env, capture_output=True, check=True,
+            cwd=repo_path,
+            env=env,
+            capture_output=True,
+            check=True,
         )
         name = _unique_final_branch(repo_path, "conflict-branch")
         assert name == "conflict-branch-2"
@@ -136,11 +228,17 @@ class TestUniqueFinalBranch:
         for suffix in ("x-branch", "x-branch-2"):
             subprocess.run(
                 ["git", "checkout", "-b", suffix],
-                cwd=repo_path, env=env, capture_output=True, check=True,
+                cwd=repo_path,
+                env=env,
+                capture_output=True,
+                check=True,
             )
         subprocess.run(
             ["git", "checkout", "autoresearch/test-marker-mar30"],
-            cwd=repo_path, env=env, capture_output=True, check=True,
+            cwd=repo_path,
+            env=env,
+            capture_output=True,
+            check=True,
         )
         name = _unique_final_branch(repo_path, "x-branch")
         assert name == "x-branch-3"
@@ -157,7 +255,7 @@ class TestUniqueFinalBranch:
             patch("autoresearch.finalize._run_git", return_value=mock_result),
             pytest.raises(GitError, match="Could not find unique branch name"),
         ):
-                _unique_final_branch(repo_path, base)
+            _unique_final_branch(repo_path, base)
 
 
 class TestFindMergeBase:
@@ -210,17 +308,32 @@ class TestFinalizeMarkerEdgeCases:
         # Pre-create the first branch name that finalize_marker would choose
         subprocess.run(
             ["git", "checkout", "-b", "autoresearch/test-marker-final-1"],
-            cwd=repo_path, env=env, capture_output=True, check=True,
+            cwd=repo_path,
+            env=env,
+            capture_output=True,
+            check=True,
         )
         subprocess.run(
             ["git", "checkout", "autoresearch/test-marker-mar30"],
-            cwd=repo_path, env=env, capture_output=True, check=True,
+            cwd=repo_path,
+            env=env,
+            capture_output=True,
+            check=True,
         )
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="opt A"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="opt A",
+            ),
         ]
         branches = finalize_marker(
-            repo_path, "test-marker", results,
+            repo_path,
+            "test-marker",
+            results,
             source_branch="autoresearch/test-marker-mar30",
         )
         assert len(branches) == 1
@@ -230,11 +343,27 @@ class TestFinalizeMarkerEdgeCases:
         """Exercises squash path (len(applied) > 1)."""
         repo_path, _env, commits = git_repo
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="same desc"),
-            ExperimentResult(commit=commits[1], metric=12.0, guard="pass", status="keep", confidence="--", description="Same Desc"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="same desc",
+            ),
+            ExperimentResult(
+                commit=commits[1],
+                metric=12.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="Same Desc",
+            ),
         ]
         branches = finalize_marker(
-            repo_path, "test-marker", results,
+            repo_path,
+            "test-marker",
+            results,
             source_branch="autoresearch/test-marker-mar30",
         )
         # Both commits share same normalized description → one group, one branch
@@ -245,10 +374,19 @@ class TestFinalizeMarkerEdgeCases:
         """Single commit in group yields metric_delta=None."""
         repo_path, _env, commits = git_repo
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="solo"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="solo",
+            ),
         ]
         branches = finalize_marker(
-            repo_path, "test-marker", results,
+            repo_path,
+            "test-marker",
+            results,
             source_branch="autoresearch/test-marker-mar30",
         )
         assert branches[0]["metric_delta"] is None
@@ -269,10 +407,13 @@ class TestFinalizeMarkerEdgeCases:
                 raise GitError("nothing to abort")  # tests inner except
             # All other git calls pass through
             import subprocess as sp
+
             result = sp.run(
                 ["git"] + args,
-                check=False, cwd=kwargs.get("cwd", repo_path),
-                capture_output=True, text=True,
+                check=False,
+                cwd=kwargs.get("cwd", repo_path),
+                capture_output=True,
+                text=True,
             )
             m = MagicMock()
             m.stdout = result.stdout
@@ -282,11 +423,20 @@ class TestFinalizeMarkerEdgeCases:
             return m
 
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="will-fail"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="will-fail",
+            ),
         ]
         with patch("autoresearch.finalize._run_git", side_effect=side_effect):
             branches = finalize_marker(
-                repo_path, "test-marker", results,
+                repo_path,
+                "test-marker",
+                results,
                 source_branch="autoresearch/test-marker-mar30",
             )
         # All cherry-picks failed → branch cleaned up, no branches returned
@@ -296,7 +446,14 @@ class TestFinalizeMarkerEdgeCases:
         """Without source_branch, returns to previous branch via checkout -."""
         repo_path, _env, commits = git_repo
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="no-src"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="no-src",
+            ),
         ]
         # No source_branch passed
         branches = finalize_marker(repo_path, "test-marker", results)
@@ -308,6 +465,7 @@ class TestFinalizeMarkerEdgeCases:
 
         orig_run_git = None
         import autoresearch.finalize as fin_mod
+
         orig_run_git = fin_mod._run_git
 
         def selective_mock(args, cwd=None):
@@ -316,12 +474,28 @@ class TestFinalizeMarkerEdgeCases:
             return orig_run_git(args, cwd=cwd)
 
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="squash-me"),
-            ExperimentResult(commit=commits[1], metric=11.0, guard="pass", status="keep", confidence="--", description="squash-me"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="squash-me",
+            ),
+            ExperimentResult(
+                commit=commits[1],
+                metric=11.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="squash-me",
+            ),
         ]
         with patch("autoresearch.finalize._run_git", side_effect=selective_mock):
             branches = finalize_marker(
-                repo_path, "test-marker", results,
+                repo_path,
+                "test-marker",
+                results,
                 source_branch="autoresearch/test-marker-mar30",
             )
         # Outer handler caught the error, branch should be cleaned up
@@ -332,20 +506,34 @@ class TestFinalizeMarkerEdgeCases:
         repo_path, _env, commits = git_repo
 
         import autoresearch.finalize as fin_mod
+
         orig_run_git = fin_mod._run_git
 
         def selective_mock(args, cwd=None):
             # Fail the final checkout of the source branch
-            if args[0] == "checkout" and len(args) == 2 and args[1] == "my-source-branch":
+            if (
+                args[0] == "checkout"
+                and len(args) == 2
+                and args[1] == "my-source-branch"
+            ):
                 raise GitError("branch not found")
             return orig_run_git(args, cwd=cwd)
 
         results = [
-            ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="test-cb"),
+            ExperimentResult(
+                commit=commits[0],
+                metric=10.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="test-cb",
+            ),
         ]
         with patch("autoresearch.finalize._run_git", side_effect=selective_mock):
             branches = finalize_marker(
-                repo_path, "test-marker", results,
+                repo_path,
+                "test-marker",
+                results,
                 source_branch="my-source-branch",
             )
         assert len(branches) == 1
@@ -377,11 +565,20 @@ class TestFinalizeCleanupGitErrorSuppressed:
             return MagicMock(stdout="", returncode=0)
 
         results = [
-            ExperimentResult(commit="abc1234", metric=5.0, guard="pass", status="keep", confidence="--", description="test-cleanup"),
+            ExperimentResult(
+                commit="abc1234",
+                metric=5.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="test-cleanup",
+            ),
         ]
         with patch("autoresearch.finalize._run_git", side_effect=selective_mock):
             branches = finalize_marker(
-                tmp_path, "test-marker", results,
+                tmp_path,
+                "test-marker",
+                results,
                 source_branch=None,
             )
         assert branches == []
@@ -402,11 +599,20 @@ class TestFinalizeCleanupGitErrorSuppressed:
             return MagicMock(stdout="", returncode=0)
 
         results = [
-            ExperimentResult(commit="def5678", metric=3.0, guard="pass", status="keep", confidence="--", description="cleanup-test"),
+            ExperimentResult(
+                commit="def5678",
+                metric=3.0,
+                guard="pass",
+                status="keep",
+                confidence="--",
+                description="cleanup-test",
+            ),
         ]
         with patch("autoresearch.finalize._run_git", side_effect=selective_mock):
             branches = finalize_marker(
-                tmp_path, "test-marker", results,
+                tmp_path,
+                "test-marker",
+                results,
                 source_branch="autoresearch/test-marker-mar30",
             )
         assert branches == []
@@ -422,7 +628,10 @@ class TestMergeFinalized:
         # Verify we're on main
         result = subprocess.run(
             ["git", "branch", "--show-current"],
-            check=False, cwd=repo_path, capture_output=True, text=True,
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
         )
         assert result.stdout.strip() == "main"
 

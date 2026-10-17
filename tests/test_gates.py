@@ -43,8 +43,15 @@ def _make_marker(**overrides) -> Marker:
     defaults = {
         "name": "test",
         "target": Target(mutable=["src/**/*.py"]),
-        "metric": Metric(command="echo 10", extract="cat", direction=MetricDirection.LOWER, baseline=20),
-        "agent": AgentConfig(model="sonnet", budget_per_experiment="5m", max_experiments=10),
+        "metric": Metric(
+            command="echo 10",
+            extract="cat",
+            direction=MetricDirection.LOWER,
+            baseline=20,
+        ),
+        "agent": AgentConfig(
+            model="sonnet", budget_per_experiment="5m", max_experiments=10
+        ),
     }
     defaults.update(overrides)
     return Marker(**defaults)
@@ -112,15 +119,21 @@ class TestGateTests:
 
 class TestGateConfidence:
     def test_pass_above_threshold(self):
-        result = gate_confidence(Path("."), _make_marker(), FakeRunResult(final_confidence=1.5))
+        result = gate_confidence(
+            Path("."), _make_marker(), FakeRunResult(final_confidence=1.5)
+        )
         assert result.passed
 
     def test_fail_below_threshold(self):
-        result = gate_confidence(Path("."), _make_marker(), FakeRunResult(final_confidence=0.5))
+        result = gate_confidence(
+            Path("."), _make_marker(), FakeRunResult(final_confidence=0.5)
+        )
         assert not result.passed
 
     def test_skip_when_none(self):
-        result = gate_confidence(Path("."), _make_marker(), FakeRunResult(final_confidence=None))
+        result = gate_confidence(
+            Path("."), _make_marker(), FakeRunResult(final_confidence=None)
+        )
         assert result.passed
         assert "--" in result.value
 
@@ -129,14 +142,18 @@ class TestGateChain:
     def test_all_pass(self):
         marker = _make_marker()
         rr = FakeRunResult(kept=3, final_confidence=1.5)
-        result = run_gate_chain(Path("."), marker, rr, gate_names=["metric", "confidence"])
+        result = run_gate_chain(
+            Path("."), marker, rr, gate_names=["metric", "confidence"]
+        )
         assert result.all_passed
         assert len(result.gates) == 2
 
     def test_short_circuits_on_failure(self):
         marker = _make_marker()
         rr = FakeRunResult(kept=0)
-        result = run_gate_chain(Path("."), marker, rr, gate_names=["metric", "confidence"])
+        result = run_gate_chain(
+            Path("."), marker, rr, gate_names=["metric", "confidence"]
+        )
         assert not result.all_passed
         assert len(result.gates) == 1  # stopped at metric
 
@@ -145,7 +162,9 @@ class TestGateChain:
             all_passed=False,
             gates=[
                 GateResult(name="metric", passed=True, reason="ok", value="10"),
-                GateResult(name="security", passed=False, reason="1 vuln", value="FAIL"),
+                GateResult(
+                    name="security", passed=False, reason="1 vuln", value="FAIL"
+                ),
             ],
         )
         summary = chain.summary()
