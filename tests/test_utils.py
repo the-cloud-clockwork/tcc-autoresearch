@@ -1360,18 +1360,20 @@ class TestParseDurationD:
 # ============================================================
 
 import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
+
 from autoresearch.results import (
-    ExperimentResult,
-    ensure_results_dir,
-    read_results,
-    append_result,
-    get_latest_metric,
-    get_kept_metrics,
     RESULTS_DIR,
     RESULTS_FILE,
     TSV_HEADER,
+    ExperimentResult,
+    append_result,
+    ensure_results_dir,
+    get_kept_metrics,
+    get_latest_metric,
+    read_results,
 )
 
 
@@ -1640,12 +1642,12 @@ class TestTsvHeader:
 # ============================================================
 
 from autoresearch.metrics import (
-    is_improved,
+    GuardResult,
+    HarnessResult,
+    _shell_quote,
     compute_confidence,
     confidence_label,
-    HarnessResult,
-    GuardResult,
-    _shell_quote,
+    is_improved,
 )
 
 
@@ -1830,19 +1832,26 @@ class TestGuardResult:
 # Tests for autoresearch.state
 # ============================================================
 
+from autoresearch.marker import (
+    AgentConfig,
+    Marker,
+    MarkerStatus,
+    Metric,
+    Schedule,
+    Target,
+)
 from autoresearch.state import (
-    TrackedMarker,
-    DaemonState,
     AppState,
+    DaemonState,
+    TrackedMarker,
+    derive_marker_id,
+    get_effective_status,
+    get_tracked,
     load_state,
     save_state,
-    derive_marker_id,
     track_marker,
     untrack_marker,
-    get_tracked,
-    get_effective_status,
 )
-from autoresearch.marker import AgentConfig, MarkerStatus, Marker, Metric, Target, Schedule
 
 
 def _make_state_marker(name="test") -> Marker:
@@ -2113,11 +2122,11 @@ class TestGetEffectiveStatus:
 # ============================================================
 
 from autoresearch.ideas import (
-    create_ideas_template,
-    read_ideas,
-    append_idea,
     IDEAS_FILE,
     SECTIONS,
+    append_idea,
+    create_ideas_template,
+    read_ideas,
 )
 
 

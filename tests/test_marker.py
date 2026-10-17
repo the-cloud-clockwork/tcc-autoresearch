@@ -6,14 +6,14 @@ import pytest
 from pydantic import ValidationError
 
 from autoresearch.marker import (
-    Guard,
     Escalation,
+    Guard,
     Marker,
     MarkerFile,
     MarkerStatus,
     MetricDirection,
-    Schedule,
     ResultsConfig,
+    Schedule,
     find_marker_file,
     get_marker,
     load_markers,
@@ -145,7 +145,12 @@ class TestMarkerDefaults:
         assert MarkerStatus.COMPLETED == "completed"
 
     def test_find_marker_file_prefers_config_dir(self, tmp_path):
-        from autoresearch.marker import find_marker_file, CONFIG_DIR, CONFIG_FILENAME, MARKER_FILENAME
+        from autoresearch.marker import (
+            CONFIG_DIR,
+            CONFIG_FILENAME,
+            MARKER_FILENAME,
+            find_marker_file,
+        )
         # Create both paths
         config_dir = tmp_path / CONFIG_DIR
         config_dir.mkdir()

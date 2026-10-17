@@ -2,10 +2,9 @@
 
 import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
-
-from unittest.mock import MagicMock, patch
 
 from autoresearch.worktree import (
     GitError,
@@ -155,8 +154,10 @@ class TestUniqueBranch:
         mock_result = MagicMock()
         mock_result.stdout = "\n".join(all_names)
 
-        with patch("autoresearch.worktree._run_git", return_value=mock_result):
-            with pytest.raises(GitError, match="Could not find unique branch name"):
+        with (
+            patch("autoresearch.worktree._run_git", return_value=mock_result),
+            pytest.raises(GitError, match="Could not find unique branch name"),
+        ):
                 _unique_branch(git_repo, base)
 
 
@@ -180,9 +181,11 @@ class TestCreateWorktreeFailure:
             temp_dirs_created.append(Path(path))
             return path
 
-        with patch("autoresearch.worktree._run_git", side_effect=selective_mock), \
-             patch("autoresearch.worktree.mkdtemp", side_effect=tracking_mkdtemp):
-            with pytest.raises(GitError):
+        with (
+            patch("autoresearch.worktree._run_git", side_effect=selective_mock),
+            patch("autoresearch.worktree.mkdtemp", side_effect=tracking_mkdtemp),
+            pytest.raises(GitError),
+        ):
                 create_worktree(git_repo, "fail-test")
 
         # Temp dir should have been cleaned up

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -21,13 +21,13 @@ from autoresearch.daemon import (
     write_pid,
 )
 from autoresearch.marker import (
+    AgentConfig,
     Marker,
     MarkerFile,
     MarkerStatus,
     Metric,
     Schedule,
     Target,
-    AgentConfig,
 )
 from autoresearch.state import AppState, TrackedMarker
 
@@ -729,8 +729,8 @@ class TestStopDaemonStateUpdate:
         state_path = tmp_path / "state.json"
         write_pid(99999999, pid_path)  # Dead PID → stale
 
-        from autoresearch.state import DaemonState
         from autoresearch.state import AppState as AS
+        from autoresearch.state import DaemonState
         alive_state = AS(daemon=DaemonState(running=True, pid=99999999))
         with (
             patch("autoresearch.daemon.load_state", return_value=alive_state),
@@ -1160,6 +1160,7 @@ class TestDaemonRunnerRunEarlyExit:
 class TestDaemonRunnerReapThreadsExtra:
     def test_finished_thread_removed(self):
         import threading
+
         from autoresearch.config import GlobalConfig
         dr = DaemonRunner(config=GlobalConfig())
 
@@ -1174,6 +1175,7 @@ class TestDaemonRunnerReapThreadsExtra:
 
     def test_alive_thread_kept(self):
         import threading
+
         from autoresearch.config import GlobalConfig
         dr = DaemonRunner(config=GlobalConfig())
 
@@ -1516,21 +1518,27 @@ class TestDaemonRunnerPollSeconds:
 class TestDaemonizeWin32Guard:
     def test_raises_runtime_error_on_windows(self):
         import sys
+
         from autoresearch.daemon import daemonize
 
-        with patch.object(sys, "platform", "win32"):
-            with pytest.raises(RuntimeError, match="not supported on Windows"):
+        with (
+            patch.object(sys, "platform", "win32"),
+            pytest.raises(RuntimeError, match="not supported on Windows"),
+        ):
                 daemonize()
 
     def test_no_error_on_linux(self, tmp_path):
         import sys
+
         from autoresearch.daemon import daemonize
 
         # On Linux, daemonize calls os.fork which we must intercept before
         # it actually forks. We only test that the win32 check is skipped.
-        with patch.object(sys, "platform", "linux"):
-            with patch("os.fork", side_effect=OSError("mock fork blocked")):
-                with pytest.raises(OSError, match="mock fork blocked"):
+        with (
+            patch.object(sys, "platform", "linux"),
+            patch("os.fork", side_effect=OSError("mock fork blocked")),
+            pytest.raises(OSError, match="mock fork blocked"),
+        ):
                     daemonize(log_path=tmp_path / "log", pid_path=tmp_path / "pid")
 
 
@@ -1663,8 +1671,8 @@ class TestDaemonizeFirstChildPath:
             patch("os.setsid"),
             patch("os.write", side_effect=lambda fd, data: written_data.append(data)),
             patch("os._exit", side_effect=lambda code: exit_codes.append(code) or (_ for _ in ()).throw(SystemExit(code))),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
                 daemonize(
                     log_path=tmp_path / "daemon.log",
                     pid_path=tmp_path / "daemon.pid",
@@ -1696,8 +1704,8 @@ class TestDaemonizeFirstChildPath:
             patch("os.setsid"),
             patch("os.write"),
             patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
                 daemonize(
                     log_path=tmp_path / "daemon.log",
                     pid_path=tmp_path / "daemon.pid",
@@ -1763,8 +1771,8 @@ class TestDaemonizeGrandchildPath:
             patch("signal.signal"),
             patch("autoresearch.daemon.clear_pid"),
             patch("os._exit", side_effect=lambda code: exit_codes.append(code) or (_ for _ in ()).throw(SystemExit(code))),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
                 daemonize(
                     log_path=tmp_path / "daemon.log",
                     pid_path=tmp_path / "daemon.pid",
@@ -1812,8 +1820,8 @@ class TestDaemonizeGrandchildPath:
             patch("signal.signal"),
             patch("autoresearch.daemon.clear_pid"),
             patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
                 daemonize(
                     log_path=tmp_path / "daemon.log",
                     pid_path=tmp_path / "daemon.pid",
@@ -1863,8 +1871,8 @@ class TestDaemonizeGrandchildPath:
             patch("signal.signal"),
             patch("autoresearch.daemon.clear_pid", side_effect=lambda p: clear_pid_calls.append(p)),
             patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
                 daemonize(
                     log_path=tmp_path / "daemon.log",
                     pid_path=tmp_path / "daemon.pid",
@@ -1910,8 +1918,8 @@ class TestDaemonizeGrandchildPath:
             patch("signal.signal", side_effect=lambda s, h: registered_signals.append(s)),
             patch("autoresearch.daemon.clear_pid"),
             patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
                 daemonize(
                     log_path=tmp_path / "daemon.log",
                     pid_path=tmp_path / "daemon.pid",
@@ -1923,8 +1931,9 @@ class TestDaemonizeGrandchildPath:
 
     def test_handle_signal_calls_runner_shutdown(self, tmp_path):
         """Invoke _handle_signal to cover lines 310-311."""
-        from autoresearch.daemon import daemonize
         import signal as sig
+
+        from autoresearch.daemon import daemonize
 
         fork_calls = []
 
@@ -1963,8 +1972,8 @@ class TestDaemonizeGrandchildPath:
             patch("signal.signal", side_effect=capture_signal),
             patch("autoresearch.daemon.clear_pid"),
             patch("os._exit", side_effect=lambda code: (_ for _ in ()).throw(SystemExit(code))),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
                 daemonize(
                     log_path=tmp_path / "daemon.log",
                     pid_path=tmp_path / "daemon.pid",
@@ -2052,13 +2061,13 @@ class TestIsDueTypeError:
 class TestResolveCronExpressionMapValues:
     def test_overnight_is_1am_daily(self):
         schedule = _make_schedule("overnight")
-        from autoresearch.daemon import _resolve_cron_expression, SCHEDULE_CRON_MAP
+        from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
         result = _resolve_cron_expression(schedule)
         assert result == SCHEDULE_CRON_MAP["overnight"]
 
     def test_weekend_is_saturday_1am(self):
         schedule = _make_schedule("weekend")
-        from autoresearch.daemon import _resolve_cron_expression, SCHEDULE_CRON_MAP
+        from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
         result = _resolve_cron_expression(schedule)
         assert result == SCHEDULE_CRON_MAP["weekend"]
 
@@ -2206,12 +2215,12 @@ class TestIsDueAdditionalTypes:
 
 class TestResolveCronAllMapKeys:
     def test_overnight_resolves(self):
-        from autoresearch.daemon import _resolve_cron_expression, SCHEDULE_CRON_MAP
+        from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
         s = _make_schedule("overnight")
         assert _resolve_cron_expression(s) == SCHEDULE_CRON_MAP["overnight"]
 
     def test_weekend_resolves(self):
-        from autoresearch.daemon import _resolve_cron_expression, SCHEDULE_CRON_MAP
+        from autoresearch.daemon import SCHEDULE_CRON_MAP, _resolve_cron_expression
         s = _make_schedule("weekend")
         assert _resolve_cron_expression(s) == SCHEDULE_CRON_MAP["weekend"]
 
@@ -2283,6 +2292,7 @@ class TestPidRoundTrip:
 class TestIsPidAliveBasic:
     def test_current_process_is_alive(self):
         import os
+
         from autoresearch.daemon import is_pid_alive
         assert is_pid_alive(os.getpid()) is True
 

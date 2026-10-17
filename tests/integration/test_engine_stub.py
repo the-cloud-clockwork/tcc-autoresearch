@@ -127,7 +127,7 @@ class TestEngineStub:
         """Verify the stub outputs parseable stream-json."""
         result = subprocess.run(
             ["claude", "-p", "test", "--add-dir", str(engine_repo)],
-            capture_output=True, text=True,
+            check=False, capture_output=True, text=True,
         )
         assert result.returncode == 0
         lines = result.stdout.strip().splitlines()
@@ -140,7 +140,7 @@ class TestEngineStub:
         original = (engine_repo / "main.py").read_text()
         subprocess.run(
             ["claude", "-p", "test", "--add-dir", str(engine_repo)],
-            capture_output=True, text=True,
+            check=False, capture_output=True, text=True,
         )
         modified = (engine_repo / "main.py").read_text()
         assert original != modified

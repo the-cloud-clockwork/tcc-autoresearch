@@ -109,7 +109,7 @@ def _fetch_issues(marker: Marker, repo_path: Path | None) -> str:
     try:
         result = subprocess.run(
             ["bash", "-c", cmd],
-            cwd=repo_path or Path("."),
+            check=False, cwd=repo_path or Path("."),
             capture_output=True,
             text=True,
             timeout=60,
@@ -121,7 +121,7 @@ def _fetch_issues(marker: Marker, repo_path: Path | None) -> str:
         logger.warning(f"Issues command returned no output (rc={result.returncode})")
     except subprocess.TimeoutExpired:
         logger.warning("Issues command timed out (60s)")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         logger.warning(f"Issues command failed: {e}")
 
     return "Find and fix issues that will improve the metric.\n\n"

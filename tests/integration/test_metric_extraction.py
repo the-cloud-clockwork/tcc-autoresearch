@@ -23,7 +23,7 @@ class TestMetricExtraction:
 
         ruff_out = subprocess.run(
             ["ruff", "check", "."],
-            cwd=git_repo_with_ruff_errors,
+            check=False, cwd=git_repo_with_ruff_errors,
             capture_output=True, text=True,
         )
         match = re.search(r"Found (\d+)", ruff_out.stdout + ruff_out.stderr)

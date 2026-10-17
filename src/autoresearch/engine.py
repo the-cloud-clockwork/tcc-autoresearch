@@ -36,7 +36,7 @@ from autoresearch.worktree import (
     GitError,
     create_worktree,
     git_commit,
-    git_head_short,  # noqa: F401 — used by test mocks via autoresearch.engine.git_head_short
+    git_head_short,
     git_reset_hard,
     remove_worktree,
 )
@@ -177,7 +177,7 @@ def _load_dotenv_into(env: dict[str, str], path: Path) -> None:
 class ClaudeCodeRunner(AgentRunner):
     """Agent runner using Claude Code CLI with profile-based permissions."""
 
-    def __init__(self, marker: "Marker"):
+    def __init__(self, marker: Marker):
         self.marker = marker
         self.agent_config = marker.agent
 
@@ -187,7 +187,11 @@ class ClaudeCodeRunner(AgentRunner):
         program: str,
         budget: str,
     ) -> AgentResult:
-        from autoresearch.agent_profile import DEFAULT_AGENT_DIR, build_cli_permission_flags, ensure_agent_dir
+        from autoresearch.agent_profile import (
+            DEFAULT_AGENT_DIR,
+            build_cli_permission_flags,
+            ensure_agent_dir,
+        )
         from autoresearch.telemetry import (
             extract_description_from_telemetry,
             parse_stream_json,
@@ -208,7 +212,7 @@ class ClaudeCodeRunner(AgentRunner):
         try:
             result = subprocess.run(
                 cmd,
-                cwd=str(paths.agent_dir),  # run FROM the agent dir
+                check=False, cwd=str(paths.agent_dir),  # run FROM the agent dir
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
@@ -320,7 +324,7 @@ class ClaudeCodeRunner(AgentRunner):
         return env
 
 
-def get_agent_runner(marker: "Marker") -> AgentRunner:
+def get_agent_runner(marker: Marker) -> AgentRunner:
     """Return the appropriate agent runner for the given marker."""
     return ClaudeCodeRunner(marker=marker)
 
@@ -568,7 +572,7 @@ def run_marker(
 
 def _publish_results(
     repo_path: Path,
-    marker: "Marker",
+    marker: Marker,
     result: RunResult,
     source_branch: str,
     _results: list,
@@ -589,7 +593,7 @@ def _publish_results(
     logger.info(f"Pushing branch {source_branch} to origin")
     push_result = subprocess.run(
         ["git", "push", "origin", source_branch],
-        cwd=repo_path, capture_output=True, text=True, timeout=60,
+        check=False, cwd=repo_path, capture_output=True, text=True, timeout=60,
     )
     if push_result.returncode != 0:
         logger.warning(f"Push failed: {push_result.stderr[:200]}")
@@ -611,7 +615,7 @@ def _publish_results(
     pr_cmd = subprocess.run(
         ["gh", "pr", "create", "--base", target, "--head", source_branch,
          "--title", title, "--body", body],
-        cwd=repo_path, capture_output=True, text=True, timeout=30,
+        check=False, cwd=repo_path, capture_output=True, text=True, timeout=30,
     )
 
     if pr_cmd.returncode == 0:
@@ -624,7 +628,7 @@ def _publish_results(
             merge_cmd = subprocess.run(
                 ["gh", "pr", "merge", pr_number, "--squash", "--auto",
                  "--delete-branch=false"],
-                cwd=repo_path, capture_output=True, text=True, timeout=30,
+                check=False, cwd=repo_path, capture_output=True, text=True, timeout=30,
             )
             if merge_cmd.returncode == 0:
                 result.auto_merged = True
@@ -633,7 +637,7 @@ def _publish_results(
             else:
                 merge_cmd2 = subprocess.run(
                     ["gh", "pr", "merge", pr_number, "--squash"],
-                    cwd=repo_path, capture_output=True, text=True, timeout=30,
+                    check=False, cwd=repo_path, capture_output=True, text=True, timeout=30,
                 )
                 if merge_cmd2.returncode == 0:
                     result.auto_merged = True
@@ -661,10 +665,10 @@ def _run_state_update(repo_path: Path) -> None:
     try:
         subprocess.run(
             ["bash", str(script), str(repo_path)],
-            cwd=repo_path, capture_output=True, text=True, timeout=30,
+            check=False, cwd=repo_path, capture_output=True, text=True, timeout=30,
         )
         logger.info("State update completed")
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         logger.warning("state-update.sh failed")
 
 
@@ -849,7 +853,7 @@ def _run_snapshot(repo_path: Path, marker: Marker, exp_num: int) -> str | None:
         expanded = cmd.replace("{exp_num}", str(exp_num))
         result = subprocess.run(
             ["bash", "-c", expanded],
-            cwd=repo_path, capture_output=True, text=True, timeout=120,
+            check=False, cwd=repo_path, capture_output=True, text=True, timeout=120,
         )
         if result.returncode == 0:
             snap_id = result.stdout.strip().split("\n")[-1]
@@ -858,7 +862,7 @@ def _run_snapshot(repo_path: Path, marker: Marker, exp_num: int) -> str | None:
         logger.warning(f"Snapshot command failed (rc={result.returncode}): {result.stderr[:200]}")
     except subprocess.TimeoutExpired:
         logger.warning("Snapshot command timed out (120s)")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         logger.warning(f"Snapshot command error: {e}")
     return None
 
@@ -872,7 +876,7 @@ def _run_restore(repo_path: Path, marker: Marker, snapshot_ref: str | None) -> N
         expanded = cmd.replace("{snapshot_id}", snapshot_ref)
         result = subprocess.run(
             ["bash", "-c", expanded],
-            cwd=repo_path, capture_output=True, text=True, timeout=120,
+            check=False, cwd=repo_path, capture_output=True, text=True, timeout=120,
         )
         if result.returncode == 0:
             logger.info(f"Restore completed for snapshot {snapshot_ref}")
@@ -880,7 +884,7 @@ def _run_restore(repo_path: Path, marker: Marker, snapshot_ref: str | None) -> N
             logger.warning(f"Restore failed (rc={result.returncode}): {result.stderr[:200]}")
     except subprocess.TimeoutExpired:
         logger.warning("Restore command timed out (120s)")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         logger.warning(f"Restore command error: {e}")
 
 

@@ -62,7 +62,7 @@ class TestFinalizeMarker:
         assert branches == []
 
     def test_finalize_single_kept(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
         results = [
             ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="optimization A"),
         ]
@@ -75,7 +75,7 @@ class TestFinalizeMarker:
         assert branches[0]["description"] == "optimization A"
 
     def test_finalize_groups_by_description(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
         results = [
             ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="optimization A"),
             ExperimentResult(commit=commits[1], metric=15.0, guard="pass", status="keep", confidence="--", description="optimization B"),
@@ -88,7 +88,7 @@ class TestFinalizeMarker:
         assert len(branches) == 2
 
     def test_does_not_delete_original_branch(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
         results = [
             ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="test"),
         ]
@@ -99,7 +99,7 @@ class TestFinalizeMarker:
         # Original branch should still exist
         result = subprocess.run(
             ["git", "branch", "--list", "autoresearch/test-marker-mar30"],
-            cwd=repo_path, capture_output=True, text=True,
+            check=False, cwd=repo_path, capture_output=True, text=True,
         )
         assert "autoresearch/test-marker-mar30" in result.stdout
 
@@ -113,12 +113,12 @@ class TestFinalizeMarker:
 
 class TestUniqueFinalBranch:
     def test_returns_base_when_available(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, _commits = git_repo
         name = _unique_final_branch(repo_path, "totally-new-branch-xyz")
         assert name == "totally-new-branch-xyz"
 
     def test_increments_suffix_when_base_exists(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, env, _commits = git_repo
         # Create the base branch so it conflicts
         subprocess.run(
             ["git", "checkout", "-b", "conflict-branch"],
@@ -132,7 +132,7 @@ class TestUniqueFinalBranch:
         assert name == "conflict-branch-2"
 
     def test_increments_again_when_dash_2_exists(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, env, _commits = git_repo
         for suffix in ("x-branch", "x-branch-2"):
             subprocess.run(
                 ["git", "checkout", "-b", suffix],
@@ -147,25 +147,27 @@ class TestUniqueFinalBranch:
 
     def test_raises_when_all_names_taken(self, git_repo):
         """_unique_final_branch raises GitError when all 100 candidates exist (line 29)."""
-        repo_path, env, commits = git_repo
+        repo_path, _env, _commits = git_repo
         base = "autoresearch/marker-final-1"
         all_names = {base} | {f"{base}-{i}" for i in range(2, 100)}
         mock_result = MagicMock()
         mock_result.stdout = "\n".join(all_names)
 
-        with patch("autoresearch.finalize._run_git", return_value=mock_result):
-            with pytest.raises(GitError, match="Could not find unique branch name"):
+        with (
+            patch("autoresearch.finalize._run_git", return_value=mock_result),
+            pytest.raises(GitError, match="Could not find unique branch name"),
+        ):
                 _unique_final_branch(repo_path, base)
 
 
 class TestFindMergeBase:
     def test_uses_merge_base_when_available(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, _commits = git_repo
         result = _find_merge_base(repo_path, "main")
         assert len(result) == 40  # full SHA
 
     def test_fallback_to_head_minus_1(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, _commits = git_repo
         call_log = []
 
         def side_effect(args, **kwargs):
@@ -183,7 +185,7 @@ class TestFindMergeBase:
         assert "rev-parse" in call_log
 
     def test_fallback_to_head_when_no_parent(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, _commits = git_repo
 
         def side_effect(args, **kwargs):
             cmd = args[0] if args else ""
@@ -226,7 +228,7 @@ class TestFinalizeMarkerEdgeCases:
 
     def test_squash_when_multiple_commits_same_description(self, git_repo):
         """Exercises squash path (len(applied) > 1)."""
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
         results = [
             ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="same desc"),
             ExperimentResult(commit=commits[1], metric=12.0, guard="pass", status="keep", confidence="--", description="Same Desc"),
@@ -241,7 +243,7 @@ class TestFinalizeMarkerEdgeCases:
 
     def test_metric_delta_none_for_single_metric(self, git_repo):
         """Single commit in group yields metric_delta=None."""
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
         results = [
             ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="solo"),
         ]
@@ -253,7 +255,7 @@ class TestFinalizeMarkerEdgeCases:
 
     def test_cherry_pick_failure_skipped(self, git_repo):
         """When cherry-pick fails, that commit is skipped (abort called)."""
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
 
         cherry_pick_calls = []
 
@@ -269,7 +271,7 @@ class TestFinalizeMarkerEdgeCases:
             import subprocess as sp
             result = sp.run(
                 ["git"] + args,
-                cwd=kwargs.get("cwd", repo_path),
+                check=False, cwd=kwargs.get("cwd", repo_path),
                 capture_output=True, text=True,
             )
             m = MagicMock()
@@ -292,7 +294,7 @@ class TestFinalizeMarkerEdgeCases:
 
     def test_checkout_dash_fallback_when_no_source_branch(self, git_repo):
         """Without source_branch, returns to previous branch via checkout -."""
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
         results = [
             ExperimentResult(commit=commits[0], metric=10.0, guard="pass", status="keep", confidence="--", description="no-src"),
         ]
@@ -302,7 +304,7 @@ class TestFinalizeMarkerEdgeCases:
 
     def test_outer_git_error_during_squash_triggers_cleanup(self, git_repo):
         """GitError during squash triggers outer except handler (lines 115-121)."""
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
 
         orig_run_git = None
         import autoresearch.finalize as fin_mod
@@ -327,7 +329,7 @@ class TestFinalizeMarkerEdgeCases:
 
     def test_checkout_source_branch_fails_falls_back_to_dash(self, git_repo):
         """When checkout source_branch fails, falls back to checkout - (lines 127-128)."""
-        repo_path, env, commits = git_repo
+        repo_path, _env, commits = git_repo
 
         import autoresearch.finalize as fin_mod
         orig_run_git = fin_mod._run_git
@@ -412,7 +414,7 @@ class TestFinalizeCleanupGitErrorSuppressed:
 
 class TestMergeFinalized:
     def test_merge_into_main(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, _commits = git_repo
         # We're on autoresearch/test-marker-mar30, merge into main
         commit = merge_finalized(repo_path, "autoresearch/test-marker-mar30", "main")
         assert len(commit) == 40  # full SHA
@@ -420,11 +422,11 @@ class TestMergeFinalized:
         # Verify we're on main
         result = subprocess.run(
             ["git", "branch", "--show-current"],
-            cwd=repo_path, capture_output=True, text=True,
+            check=False, cwd=repo_path, capture_output=True, text=True,
         )
         assert result.stdout.strip() == "main"
 
     def test_merge_nonexistent_branch(self, git_repo):
-        repo_path, env, commits = git_repo
+        repo_path, _env, _commits = git_repo
         with pytest.raises(GitError):
             merge_finalized(repo_path, "nonexistent-branch", "main")

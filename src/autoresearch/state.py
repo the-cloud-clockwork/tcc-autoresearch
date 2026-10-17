@@ -11,7 +11,6 @@ from pydantic import BaseModel
 from autoresearch.config import AUTORESEARCH_DIR
 from autoresearch.marker import Marker, MarkerStatus
 
-
 STATE_PATH = AUTORESEARCH_DIR / "state.json"
 
 

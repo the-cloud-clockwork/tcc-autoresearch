@@ -59,7 +59,7 @@ def run_harness(
     try:
         result = subprocess.run(
             ["bash", "-c", command],
-            cwd=worktree_path,
+            check=False, cwd=worktree_path,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -105,7 +105,7 @@ def run_guard(
     try:
         result = subprocess.run(
             ["bash", "-c", command],
-            cwd=worktree_path,
+            check=False, cwd=worktree_path,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -133,7 +133,7 @@ def _extract_metric(
     try:
         result = subprocess.run(
             ["bash", "-c", f'echo {_shell_quote(output)} | {extract}'],
-            capture_output=True,
+            check=False, capture_output=True,
             text=True,
             timeout=10,
             cwd=cwd,

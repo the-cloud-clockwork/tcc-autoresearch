@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -67,7 +66,7 @@ def _resolve_marker_data(tracked, _config_path=None):
         return None, None, None
     try:
         mf = load_markers(mf_path)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         return None, None, None
     m = get_marker(mf, tracked.marker_name)
     if not m:
@@ -132,7 +131,7 @@ def main(
     ctx: typer.Context,
     headless: bool = typer.Option(False, "--headless", help="JSON output, no prompts"),
     verbose: bool = typer.Option(False, "--verbose", help="Extended debug output"),
-    config: Optional[Path] = typer.Option(None, "--config", help="Override config path"),
+    config: Path | None = typer.Option(None, "--config", help="Override config path"),  # noqa: B008 -- Typer reads option metadata from parameter defaults.
 ):
     ctx.ensure_object(dict)
     ctx.obj["headless"] = headless
@@ -324,7 +323,7 @@ def confidence_cmd(
 @app.command("init")
 def init_cmd(
     ctx: typer.Context,
-    path: Path = typer.Option(".", "--path", help="Repo path (default: current directory)"),
+    path: Path = typer.Option(".", "--path", help="Repo path (default: current directory)"),  # noqa: B008 -- Typer reads option metadata from parameter defaults.
     no_claude: bool = typer.Option(False, "--no-claude", help="Skip Claude onboard wizard, scaffold only"),
     model: str = typer.Option("opus", "--model", help="Claude model for onboard wizard"),
 ):
@@ -402,7 +401,7 @@ def init_cmd(
         "--add-dir", str(repo_path),
         "--", f"/onboard {repo_path}",
     ]
-    subprocess.run(cmd, cwd=str(package_root))
+    subprocess.run(cmd, check=False, cwd=str(package_root))
 
 
 CONFIG_TEMPLATE = """\
@@ -446,7 +445,7 @@ markers:
 @app.command("add")
 def add_cmd(
     ctx: typer.Context,
-    path: Path = typer.Option(..., "--path", help="Path to repo containing .autoresearch/config.yaml"),
+    path: Path = typer.Option(..., "--path", help="Path to repo containing .autoresearch/config.yaml"),  # noqa: B008 -- Typer reads option metadata from parameter defaults.
 ):
     """Register markers from a repo."""
     _init_ctx(ctx)
@@ -461,7 +460,7 @@ def add_cmd(
 
     try:
         mf = load_markers(mf_path)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         if is_headless(ctx):
             headless_output(ctx, err_json(f"Error reading marker file: {e}"))
             raise typer.Exit(code=1)
@@ -591,7 +590,7 @@ def _load_local_markers(marker_name: str | None = None) -> list[TrackedMarker]:
     return results
 
 
-def _resolve_run_targets(ctx: typer.Context, state, marker: Optional[str], repo: Optional[str]) -> list:
+def _resolve_run_targets(ctx: typer.Context, state, marker: str | None, repo: str | None) -> list:
     """Resolve the list of tracked markers to run, or raise typer.Exit on error."""
     if marker:
         tracked = get_tracked(state, marker)
@@ -733,9 +732,10 @@ def _run_with_live_display(t, m, state, agent_runner):
     return result
 
 
-def _execute_marker_run(t, state, repo: Optional[str], model: Optional[str], auto_merge: Optional[bool]) -> dict:
+def _execute_marker_run(t, state, repo: str | None, model: str | None, auto_merge: bool | None) -> dict:
     """Run a single tracked marker through the engine. Returns a result dict."""
-    from autoresearch.engine import EngineError, get_agent_runner, run_marker as engine_run
+    from autoresearch.engine import EngineError, get_agent_runner
+    from autoresearch.engine import run_marker as engine_run
 
     _mf, m, eff = _resolve_marker_data(t)
     if not m:
@@ -797,10 +797,10 @@ def _print_run_results(results_list: list) -> None:
 @app.command("run")
 def run_cmd(
     ctx: typer.Context,
-    marker: Optional[str] = typer.Option(None, "--marker", "-m", help="Marker ID to run"),
-    repo: Optional[str] = typer.Option(None, "--repo", help="Run all active markers in repo"),
-    model: Optional[str] = typer.Option(None, "--model", help="Override LLM model"),
-    auto_merge: Optional[bool] = typer.Option(None, "--auto-merge/--no-auto-merge", help="Override auto_merge.enabled"),
+    marker: str | None = typer.Option(None, "--marker", "-m", help="Marker ID to run"),
+    repo: str | None = typer.Option(None, "--repo", help="Run all active markers in repo"),
+    model: str | None = typer.Option(None, "--model", help="Override LLM model"),
+    auto_merge: bool | None = typer.Option(None, "--auto-merge/--no-auto-merge", help="Override auto_merge.enabled"),
 ):
     """Run experiment loop for a marker or all markers in a repo."""
     _init_ctx(ctx)
@@ -879,7 +879,7 @@ def finalize_cmd(
 def merge_cmd(
     ctx: typer.Context,
     marker: str = typer.Option(..., "--marker", "-m", help="Marker ID to merge"),
-    branch: Optional[str] = typer.Option(None, "--branch", help="Branch to merge (default: marker's branch)"),
+    branch: str | None = typer.Option(None, "--branch", help="Branch to merge (default: marker's branch)"),
     target: str = typer.Option("main", "--target", help="Target branch to merge into"),
 ):
     """Merge a finalized branch into target."""
@@ -909,7 +909,7 @@ def merge_cmd(
             headless_output(ctx, ok_json({"merged": merge_branch, "target": target, "commit": commit}))
         else:
             console.print(f"[green]Merged {merge_branch} into {target} ({commit[:7]})[/green]")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         if is_headless(ctx):
             headless_output(ctx, err_json(f"Merge failed: {e}"))
             raise typer.Exit(code=1)
@@ -920,7 +920,7 @@ def merge_cmd(
 @app.command("clean")
 def clean_cmd(
     ctx: typer.Context,
-    marker_name: Optional[str] = typer.Option(None, "--marker", "-m", help="Marker name to clean branches for"),
+    marker_name: str | None = typer.Option(None, "--marker", "-m", help="Marker name to clean branches for"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be deleted without deleting"),
     remote: bool = typer.Option(False, "--remote", help="Also delete remote branches"),
 ):
@@ -936,7 +936,7 @@ def clean_cmd(
     # Find all local autoresearch branches
     result = subprocess.run(
         ["git", "branch", "--list", f"{prefix}*"],
-        cwd=repo_path, capture_output=True, text=True,
+        check=False, cwd=repo_path, capture_output=True, text=True,
     )
     branches = [b.strip().lstrip("* ") for b in result.stdout.splitlines() if b.strip()]
 
@@ -978,12 +978,12 @@ def clean_cmd(
 
     deleted = []
     for b in to_delete:
-        subprocess.run(["git", "branch", "-D", b], cwd=repo_path, capture_output=True, text=True)
+        subprocess.run(["git", "branch", "-D", b], check=False, cwd=repo_path, capture_output=True, text=True)
         deleted.append(b)
         if remote:
             subprocess.run(
                 ["git", "push", "origin", "--delete", b],
-                cwd=repo_path, capture_output=True, text=True, timeout=15,
+                check=False, cwd=repo_path, capture_output=True, text=True, timeout=15,
             )
 
     if is_headless(ctx):
@@ -1130,7 +1130,7 @@ def _repo_mode(ctx: typer.Context, state, cwd: Path, marker_file_path: Path):
     """Display repo-specific view — loads directly from config, no registration needed."""
     try:
         mf = load_markers(marker_file_path)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         console.print(f"[red]Error reading {marker_file_path}: {e}[/red]")
         return
 
@@ -1162,7 +1162,7 @@ def _action_add(ctx: typer.Context, repo_path: Path):
 
     try:
         mf = load_markers(mf_path)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         console.print(f"[red]Error reading marker file: {e}[/red]")
         return
 
@@ -1394,7 +1394,7 @@ def _edit_config(tracked):
     editor = os.environ.get("EDITOR", "vi")
     mf_path = find_marker_file(Path(tracked.repo_path))
     if mf_path:
-        subprocess.run([*shlex.split(editor), str(mf_path)])
+        subprocess.run([*shlex.split(editor), str(mf_path)], check=False)
     else:
         console.print(f"[red]Marker file not found in {tracked.repo_path}[/red]")
 
@@ -1409,7 +1409,7 @@ def _show_branch(tracked):
     try:
         result = subprocess.run(
             ["git", "log", "--oneline", "-10", tracked.branch],
-            cwd=tracked.repo_path,
+            check=False, cwd=tracked.repo_path,
             capture_output=True,
             text=True,
         )
@@ -1417,7 +1417,7 @@ def _show_branch(tracked):
             console.print(result.stdout.rstrip())
         else:
             console.print("[dim]Branch not found in git log.[/dim]")
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         console.print("[dim]Could not read branch log.[/dim]")
 
 
@@ -1479,7 +1479,7 @@ def _merge_interactive(ctx: typer.Context, tracked):
     try:
         commit = merge_finalized(Path(tracked.repo_path), tracked.branch, target)
         console.print(f"[green]Merged {tracked.branch} into {target} ({commit[:7]})[/green]")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         console.print(f"[red]Merge failed: {e}[/red]")
 
 
@@ -1547,10 +1547,11 @@ def daemon_stop(ctx: typer.Context):
             console.print("[yellow]No daemon running[/yellow]")
 
 
-def _compute_next_fire(cron_expr: str, last_run: Optional[str]) -> Optional[str]:
+def _compute_next_fire(cron_expr: str, last_run: str | None) -> str | None:
     """Compute the next scheduled fire time from a cron expression and last run timestamp."""
-    from croniter import croniter
     from datetime import datetime, timezone
+
+    from croniter import croniter
 
     if not last_run:
         return None
@@ -1654,7 +1655,7 @@ def daemon_logs(
             headless_output(ctx, err_json("--follow is not supported in headless mode"))
             raise typer.Exit(code=2)
         import subprocess
-        subprocess.run(["tail", "-f", "-n", str(lines), str(LOG_PATH)])
+        subprocess.run(["tail", "-f", "-n", str(lines), str(LOG_PATH)], check=False)
     else:
         content = LOG_PATH.read_text()
         log_lines = content.splitlines()[-lines:]

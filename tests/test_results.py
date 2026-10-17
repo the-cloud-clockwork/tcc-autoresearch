@@ -159,12 +159,12 @@ class TestGetLatestMetricExtended:
         assert get_latest_metric([]) is None
 
     def test_only_discard_returns_none(self):
-        from autoresearch.results import get_latest_metric, ExperimentResult
+        from autoresearch.results import ExperimentResult, get_latest_metric
         results = [ExperimentResult(commit="a", metric=5.0, status="discard", description="")]
         assert get_latest_metric(results) is None
 
     def test_returns_last_keep(self):
-        from autoresearch.results import get_latest_metric, ExperimentResult
+        from autoresearch.results import ExperimentResult, get_latest_metric
         results = [
             ExperimentResult(commit="a", metric=10.0, status="keep", description=""),
             ExperimentResult(commit="b", metric=20.0, status="keep", description=""),
@@ -172,7 +172,7 @@ class TestGetLatestMetricExtended:
         assert get_latest_metric(results) == 20.0
 
     def test_skips_crash_finds_keep(self):
-        from autoresearch.results import get_latest_metric, ExperimentResult
+        from autoresearch.results import ExperimentResult, get_latest_metric
         results = [
             ExperimentResult(commit="a", metric=10.0, status="keep", description=""),
             ExperimentResult(commit="b", metric=0.0, status="crash", description=""),
@@ -180,7 +180,7 @@ class TestGetLatestMetricExtended:
         assert get_latest_metric(results) == 10.0
 
     def test_last_keep_among_mixed(self):
-        from autoresearch.results import get_latest_metric, ExperimentResult
+        from autoresearch.results import ExperimentResult, get_latest_metric
         results = [
             ExperimentResult(commit="a", metric=5.0, status="keep", description=""),
             ExperimentResult(commit="b", metric=3.0, status="discard", description=""),
@@ -196,12 +196,12 @@ class TestGetKeptMetricsExtended:
         assert get_kept_metrics([]) == []
 
     def test_only_discard_returns_empty(self):
-        from autoresearch.results import get_kept_metrics, ExperimentResult
+        from autoresearch.results import ExperimentResult, get_kept_metrics
         results = [ExperimentResult(commit="a", metric=1.0, status="discard", description="")]
         assert get_kept_metrics(results) == []
 
     def test_all_keep_returns_all(self):
-        from autoresearch.results import get_kept_metrics, ExperimentResult
+        from autoresearch.results import ExperimentResult, get_kept_metrics
         results = [
             ExperimentResult(commit="a", metric=1.0, status="keep", description=""),
             ExperimentResult(commit="b", metric=2.0, status="keep", description=""),
@@ -210,7 +210,7 @@ class TestGetKeptMetricsExtended:
         assert get_kept_metrics(results) == [1.0, 2.0, 3.0]
 
     def test_mixed_returns_only_kept(self):
-        from autoresearch.results import get_kept_metrics, ExperimentResult
+        from autoresearch.results import ExperimentResult, get_kept_metrics
         results = [
             ExperimentResult(commit="a", metric=10.0, status="keep", description=""),
             ExperimentResult(commit="b", metric=20.0, status="discard", description=""),

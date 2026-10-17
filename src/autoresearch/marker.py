@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
+
 import yaml
 from pydantic import BaseModel
-
 
 MARKER_FILENAME = ".autoresearch.yaml"
 CONFIG_DIR = ".autoresearch"

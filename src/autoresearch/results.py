@@ -7,7 +7,6 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-
 RESULTS_DIR = ".autoresearch"
 RESULTS_FILE = "results.tsv"
 TSV_HEADER = ["commit", "metric", "guard", "status", "confidence", "description"]

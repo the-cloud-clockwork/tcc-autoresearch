@@ -2,8 +2,8 @@
 
 
 from autoresearch.config import (
-    DefaultsConfig,
     DaemonConfig,
+    DefaultsConfig,
     GlobalConfig,
     ensure_autoresearch_dir,
     load_config,

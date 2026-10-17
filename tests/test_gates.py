@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
-
 from autoresearch.gates import (
     GateChainResult,
     GateResult,
@@ -15,7 +14,15 @@ from autoresearch.gates import (
     gate_tests,
     run_gate_chain,
 )
-from autoresearch.marker import AgentConfig, AutoMerge, Guard, Marker, Metric, MetricDirection, Target
+from autoresearch.marker import (
+    AgentConfig,
+    AutoMerge,
+    Guard,
+    Marker,
+    Metric,
+    MetricDirection,
+    Target,
+)
 
 
 @dataclass

@@ -46,7 +46,7 @@ def _run_command(command: str, cwd: Path | None = None, timeout: int = 300) -> t
     try:
         result = subprocess.run(
             command,
-            shell=True,
+            check=False, shell=True,
             capture_output=True,
             text=True,
             cwd=cwd,
@@ -56,7 +56,7 @@ def _run_command(command: str, cwd: Path | None = None, timeout: int = 300) -> t
         return result.returncode, output
     except subprocess.TimeoutExpired:
         return 1, f"timeout after {timeout}s"
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- Preserve recovery from arbitrary downstream errors.
         return 1, str(e)
 
 

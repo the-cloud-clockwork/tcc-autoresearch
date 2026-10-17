@@ -2,6 +2,7 @@
 
 import subprocess
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,9 +36,8 @@ from autoresearch.marker import (
     Schedule,
     Target,
 )
-from autoresearch.metrics import HarnessResult, GuardResult
+from autoresearch.metrics import GuardResult, HarnessResult
 from autoresearch.state import AppState, DaemonState, TrackedMarker
-
 
 # --- Fixtures and helpers ---
 
@@ -539,7 +539,7 @@ class TestRunMarker:
         state.markers.append(tracked)
 
         state_path = tmp_path / "state.json"
-        from autoresearch.state import save_state, load_state
+        from autoresearch.state import load_state, save_state
         save_state(state, state_path)
 
         with patch("autoresearch.engine.run_harness") as mock_h:
@@ -1270,18 +1270,18 @@ class TestAgentResultDataclass:
 
 class TestRunResultDataclass:
     def _make_run_result(self, **overrides):
-        defaults = dict(
-            marker_name="m",
-            experiments=3,
-            kept=1,
-            discarded=1,
-            crashed=1,
-            final_metric=5.0,
-            final_confidence=1.2,
-            final_status="budget_exhausted",
-            branch="autoresearch/m-abc",
-            worktree_path="/tmp/wt/m",
-        )
+        defaults = {
+            "marker_name": "m",
+            "experiments": 3,
+            "kept": 1,
+            "discarded": 1,
+            "crashed": 1,
+            "final_metric": 5.0,
+            "final_confidence": 1.2,
+            "final_status": "budget_exhausted",
+            "branch": "autoresearch/m-abc",
+            "worktree_path": "/tmp/wt/m",
+        }
         defaults.update(overrides)
         return RunResult(**defaults)
 
@@ -1419,8 +1419,8 @@ class TestEscalationStateAdditional:
 class TestFormatResultsAdditional:
     def _make_result(self, **kw):
         from autoresearch.results import ExperimentResult
-        defaults = dict(commit="abc", metric=3.0, guard="pass", status="keep",
-                        confidence="1.0", description="test")
+        defaults = {"commit": "abc", "metric": 3.0, "guard": "pass", "status": "keep",
+                        "confidence": "1.0", "description": "test"}
         defaults.update(kw)
         return ExperimentResult(**defaults)
 
@@ -1571,8 +1571,8 @@ class TestEscalationStateCrashBehavior:
 class TestFormatResultsSingleResult:
     def _r(self, **kw):
         from autoresearch.results import ExperimentResult
-        defaults = dict(commit="abc", metric=1.0, guard="pass", status="keep",
-                        confidence="1.0", description="x")
+        defaults = {"commit": "abc", "metric": 1.0, "guard": "pass", "status": "keep",
+                        "confidence": "1.0", "description": "x"}
         defaults.update(kw)
         return ExperimentResult(**defaults)
 
@@ -1683,8 +1683,8 @@ class TestEscalationStateBoundary:
 class TestWriteTelemetryFeedbackTruncation:
     def test_more_than_3_errors_only_first_3_used(self, tmp_path):
         class FakeTelemetry:
-            errors = ["e1", "e2", "e3", "e4", "e5"]
-            permission_denials = []
+            errors: ClassVar[list] = ["e1", "e2", "e3", "e4", "e5"]
+            permission_denials: ClassVar[list] = []
 
         agent_result = AgentResult(
             success=True, description="d", exit_code=0, output="",
@@ -1700,8 +1700,8 @@ class TestWriteTelemetryFeedbackTruncation:
 
     def test_more_than_3_denials_only_first_3_used(self, tmp_path):
         class FakeTelemetry:
-            errors = []
-            permission_denials = ["d1", "d2", "d3", "d4"]
+            errors: ClassVar[list] = []
+            permission_denials: ClassVar[list] = ["d1", "d2", "d3", "d4"]
 
         agent_result = AgentResult(
             success=True, description="d", exit_code=0, output="",
@@ -1716,8 +1716,8 @@ class TestWriteTelemetryFeedbackTruncation:
 
     def test_empty_errors_list_no_write(self, tmp_path):
         class FakeTelemetry:
-            errors = []
-            permission_denials = []
+            errors: ClassVar[list] = []
+            permission_denials: ClassVar[list] = []
 
         agent_result = AgentResult(
             success=True, description="d", exit_code=0, output="",
@@ -1884,11 +1884,11 @@ class TestEscalationStateSearchLevel:
 
 class TestRunResultFieldsFirst:
     def _make(self, **kw):
-        d = dict(
-            marker_name="x", experiments=5, kept=2, discarded=2, crashed=1,
-            final_metric=10.0, final_confidence=1.5, final_status="budget_exhausted",
-            branch="autoresearch/x", worktree_path="/tmp/x",
-        )
+        d = {
+            "marker_name": "x", "experiments": 5, "kept": 2, "discarded": 2, "crashed": 1,
+            "final_metric": 10.0, "final_confidence": 1.5, "final_status": "budget_exhausted",
+            "branch": "autoresearch/x", "worktree_path": "/tmp/x",
+        }
         d.update(kw)
         return RunResult(**d)
 
@@ -1926,8 +1926,8 @@ class TestWriteTelemetryFeedbackNoTelemetry:
 
     def test_oserror_silenced(self, tmp_path):
         class FakeTelemetry:
-            errors = ["e1"]
-            permission_denials = []
+            errors: ClassVar[list] = ["e1"]
+            permission_denials: ClassVar[list] = []
 
         result = AgentResult(
             success=True, description="d", exit_code=0, output="",
@@ -1938,8 +1938,8 @@ class TestWriteTelemetryFeedbackNoTelemetry:
 
     def test_permission_denials_written(self, tmp_path):
         class FakeTelemetry:
-            errors = []
-            permission_denials = ["denied1", "denied2"]
+            errors: ClassVar[list] = []
+            permission_denials: ClassVar[list] = ["denied1", "denied2"]
 
         result = AgentResult(
             success=True, description="d", exit_code=0, output="",
@@ -2548,8 +2548,8 @@ class TestClaudeCodeRunnerTimeout:
         with (
             patch("autoresearch.engine.shutil.which", return_value=None),
             patch("autoresearch.agent_profile.ensure_agent_dir", return_value=paths),
+            pytest.raises(AgentError, match="claude"),
         ):
-            with pytest.raises(AgentError, match="claude"):
                 ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "1m")
 
 
@@ -3100,8 +3100,8 @@ class TestClaudeCodeRunnerNoDefaultClaudeMd:
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
             patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=None),
+            patch("autoresearch.agent_profile.DEFAULT_AGENT_DIR", claude_dir),
         ):
-            with patch("autoresearch.agent_profile.DEFAULT_AGENT_DIR", claude_dir):
                 runner_obj.invoke(tmp_path, "test program", "5m")
         assert "--append-system-prompt-file" in captured["cmd"]
 
@@ -3209,6 +3209,7 @@ class TestEscalationStateTotalPivotsPreserved:
 class TestParseStreamJsonBlankLineInMiddle:
     def test_blank_line_between_events_skipped(self):
         import json as _json
+
         from autoresearch.telemetry import parse_stream_json
 
         e1 = _json.dumps({"type": "system", "subtype": "init", "session_id": "abc123", "tools": []})
@@ -3222,6 +3223,7 @@ class TestParseStreamJsonBlankLineInMiddle:
 
     def test_whitespace_only_line_between_events_skipped(self):
         import json as _json
+
         from autoresearch.telemetry import parse_stream_json
 
         e1 = _json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0.001,
@@ -3239,21 +3241,30 @@ class TestParseStreamJsonBlankLineInMiddle:
 
 class TestExtractDescriptionAllShortLines:
     def test_returns_none_when_all_lines_too_short(self):
-        from autoresearch.telemetry import TelemetryReport, extract_description_from_telemetry
+        from autoresearch.telemetry import (
+            TelemetryReport,
+            extract_description_from_telemetry,
+        )
 
         report = TelemetryReport(result_text="ab\nxy\n  z ")
         result = extract_description_from_telemetry(report)
         assert result is None
 
     def test_returns_none_for_single_char_lines(self):
-        from autoresearch.telemetry import TelemetryReport, extract_description_from_telemetry
+        from autoresearch.telemetry import (
+            TelemetryReport,
+            extract_description_from_telemetry,
+        )
 
         report = TelemetryReport(result_text="a\nb\nc")
         result = extract_description_from_telemetry(report)
         assert result is None
 
     def test_whitespace_only_after_strip_returns_none(self):
-        from autoresearch.telemetry import TelemetryReport, extract_description_from_telemetry
+        from autoresearch.telemetry import (
+            TelemetryReport,
+            extract_description_from_telemetry,
+        )
 
         report = TelemetryReport(result_text="\n  \n\t\n")
         result = extract_description_from_telemetry(report)
@@ -4005,11 +4016,11 @@ class TestEscalationStatePreciseBoundaries2:
 
 class TestRunResultAdditional:
     def _make(self, **kw):
-        d = dict(
-            marker_name="x", experiments=5, kept=2, discarded=2, crashed=1,
-            final_metric=10.0, final_confidence=1.5, final_status="budget_exhausted",
-            branch="autoresearch/x", worktree_path="/tmp/x",
-        )
+        d = {
+            "marker_name": "x", "experiments": 5, "kept": 2, "discarded": 2, "crashed": 1,
+            "final_metric": 10.0, "final_confidence": 1.5, "final_status": "budget_exhausted",
+            "branch": "autoresearch/x", "worktree_path": "/tmp/x",
+        }
         d.update(kw)
         return RunResult(**d)
 
@@ -4294,7 +4305,7 @@ class TestFormatResultsForProgramMore:
 
 class TestAgentResultValidation:
     def _make(self, **kw):
-        d = dict(output="ok", exit_code=0, success=True, telemetry=None, description="desc")
+        d = {"output": "ok", "exit_code": 0, "success": True, "telemetry": None, "description": "desc"}
         d.update(kw)
         return AgentResult(**d)
 
@@ -4626,18 +4637,18 @@ class TestAgentResultComprehensive:
 
 class TestRunResultComprehensive:
     def _make(self, **kw):
-        d = dict(
-            marker_name="test",
-            experiments=5,
-            kept=3,
-            discarded=1,
-            crashed=1,
-            final_metric=42.0,
-            final_confidence=0.8,
-            final_status="completed",
-            branch="autoresearch/test",
-            worktree_path="/tmp/wt",
-        )
+        d = {
+            "marker_name": "test",
+            "experiments": 5,
+            "kept": 3,
+            "discarded": 1,
+            "crashed": 1,
+            "final_metric": 42.0,
+            "final_confidence": 0.8,
+            "final_status": "completed",
+            "branch": "autoresearch/test",
+            "worktree_path": "/tmp/wt",
+        }
         d.update(kw)
         return RunResult(**d)
 
@@ -4872,18 +4883,18 @@ class TestEscalationStateCustomThresholds:
 
 class TestRunResultFields:
     def _make(self, **kwargs):
-        defaults = dict(
-            marker_name="test",
-            experiments=5,
-            kept=3,
-            discarded=2,
-            crashed=0,
-            final_metric=100.0,
-            final_confidence=2.5,
-            final_status="completed",
-            branch="autoresearch/test",
-            worktree_path="/tmp/wt",
-        )
+        defaults = {
+            "marker_name": "test",
+            "experiments": 5,
+            "kept": 3,
+            "discarded": 2,
+            "crashed": 0,
+            "final_metric": 100.0,
+            "final_confidence": 2.5,
+            "final_status": "completed",
+            "branch": "autoresearch/test",
+            "worktree_path": "/tmp/wt",
+        }
         defaults.update(kwargs)
         return RunResult(**defaults)
 
@@ -5065,7 +5076,7 @@ class TestTargetReachedB:
 
     def test_no_target_returns_false(self):
         from autoresearch.engine import _target_reached
-        from autoresearch.marker import AgentConfig, Marker, Target, Metric
+        from autoresearch.marker import AgentConfig, Marker, Metric, Target
         m = Marker(
             name="x",
             target=Target(mutable=["f.py"]),
@@ -5076,7 +5087,7 @@ class TestTargetReachedB:
 
 
 def _make_marker_with_target(target_val: float, direction: str):
-    from autoresearch.marker import AgentConfig, Marker, Target, Metric
+    from autoresearch.marker import AgentConfig, Marker, Metric, Target
     return Marker(
         name="x",
         target=Target(mutable=["f.py"]),
@@ -5094,14 +5105,14 @@ def _make_marker_with_target(target_val: float, direction: str):
 class TestFormatResultsB:
     def _r(self, **kwargs):
         from autoresearch.results import ExperimentResult
-        defaults = dict(
-            commit="abc123",
-            metric=100.0,
-            guard="--",
-            status="keep",
-            confidence="HIGH",
-            description="Test run",
-        )
+        defaults = {
+            "commit": "abc123",
+            "metric": 100.0,
+            "guard": "--",
+            "status": "keep",
+            "confidence": "HIGH",
+            "description": "Test run",
+        }
         defaults.update(kwargs)
         return ExperimentResult(**defaults)
 
@@ -5371,11 +5382,11 @@ class TestAgentResultFieldsNew:
 
 class TestRunResultFieldsNew:
     def _make(self, **kwargs):
-        d = dict(
-            marker_name="m", experiments=1, kept=1, discarded=0, crashed=0,
-            final_metric=10.0, final_confidence=1.0, final_status="completed",
-            branch="b", worktree_path="/w"
-        )
+        d = {
+            "marker_name": "m", "experiments": 1, "kept": 1, "discarded": 0, "crashed": 0,
+            "final_metric": 10.0, "final_confidence": 1.0, "final_status": "completed",
+            "branch": "b", "worktree_path": "/w"
+        }
         d.update(kwargs)
         return RunResult(**d)
 
@@ -5544,7 +5555,7 @@ class TestTargetReachedNewCases:
 class TestFormatResultsForProgramNewBatch:
     def _r(self, **kwargs):
         from autoresearch.results import ExperimentResult
-        d = dict(commit="abc", metric=1.0, guard="--", status="keep", confidence="HIGH", description="desc")
+        d = {"commit": "abc", "metric": 1.0, "guard": "--", "status": "keep", "confidence": "HIGH", "description": "desc"}
         d.update(kwargs)
         return ExperimentResult(**d)
 
@@ -5825,7 +5836,7 @@ class TestTargetReachedFinalBatch:
 class TestFormatResultsExtraBatch:
     def _r(self, **kw):
         from autoresearch.results import ExperimentResult
-        d = dict(commit="abc", metric=1.0, guard="--", status="keep", confidence="MID", description="d")
+        d = {"commit": "abc", "metric": 1.0, "guard": "--", "status": "keep", "confidence": "MID", "description": "d"}
         d.update(kw)
         return ExperimentResult(**d)
 

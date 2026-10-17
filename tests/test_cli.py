@@ -9,7 +9,14 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from autoresearch.cli import app
-from autoresearch.marker import AgentConfig, Marker, MarkerFile, MarkerStatus, Metric, Target
+from autoresearch.marker import (
+    AgentConfig,
+    Marker,
+    MarkerFile,
+    MarkerStatus,
+    Metric,
+    Target,
+)
 from autoresearch.state import AppState, TrackedMarker, save_state
 
 runner = CliRunner()
@@ -145,7 +152,11 @@ class TestHeadlessResults:
         assert data["data"] == []
 
     def test_with_results(self, tmp_path):
-        from autoresearch.results import ExperimentResult, append_result, ensure_results_dir
+        from autoresearch.results import (
+            ExperimentResult,
+            append_result,
+            ensure_results_dir,
+        )
 
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
@@ -1480,6 +1491,7 @@ class TestPrivateShowResults:
 class TestPrivateToggleSkip:
     def test_skip_active_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_skip
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -1494,6 +1506,7 @@ class TestPrivateToggleSkip:
 
     def test_unskip_skipped_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_skip
         tracked = _make_tracked(status_override=MarkerStatus.SKIP)
         state = AppState(markers=[tracked])
@@ -1508,6 +1521,7 @@ class TestPrivateToggleSkip:
 
     def test_missing_tracked_returns_early(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_skip
         tracked = _make_tracked(marker_id="missing:marker")
         state = AppState(markers=[])
@@ -1520,6 +1534,7 @@ class TestPrivateToggleSkip:
 class TestPrivateTogglePause:
     def test_pause_active_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_pause
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -1534,6 +1549,7 @@ class TestPrivateTogglePause:
 
     def test_resume_paused_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_pause
         tracked = _make_tracked(status_override=MarkerStatus.PAUSED)
         state = AppState(markers=[tracked])
@@ -1548,6 +1564,7 @@ class TestPrivateTogglePause:
 
     def test_missing_tracked_returns_early(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_pause
         tracked = _make_tracked(marker_id="missing:marker")
         state = AppState(markers=[])
@@ -1584,6 +1601,7 @@ class TestPrivateShowBranch:
 
     def test_branch_with_git_log_success(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _show_branch
         tracked = _make_tracked(repo_path=str(tmp_path), branch="autoresearch/test")
         mock_result = MagicMock()
@@ -1594,6 +1612,7 @@ class TestPrivateShowBranch:
 
     def test_branch_with_git_log_empty(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _show_branch
         tracked = _make_tracked(repo_path=str(tmp_path), branch="autoresearch/test")
         mock_result = MagicMock()
@@ -1656,6 +1675,7 @@ class TestPrivateShowConfidence:
 class TestPrivateFinalizeInteractive:
     def test_no_results_prints_message(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _finalize_interactive
         tracked = _make_tracked()
         ctx = MagicMock()
@@ -1664,8 +1684,9 @@ class TestPrivateFinalizeInteractive:
 
     def test_no_branches_returned(self):
         from unittest.mock import MagicMock
-        from autoresearch.results import ExperimentResult
+
         from autoresearch.cli import _finalize_interactive
+        from autoresearch.results import ExperimentResult
         tracked = _make_tracked()
         ctx = MagicMock()
         results = [ExperimentResult(commit="a1", metric=10.0, guard="pass", status="keep", description="x")]
@@ -1677,8 +1698,9 @@ class TestPrivateFinalizeInteractive:
 
     def test_with_branches_prints_them(self):
         from unittest.mock import MagicMock
-        from autoresearch.results import ExperimentResult
+
         from autoresearch.cli import _finalize_interactive
+        from autoresearch.results import ExperimentResult
         tracked = _make_tracked()
         ctx = MagicMock()
         results = [ExperimentResult(commit="a1", metric=10.0, guard="pass", status="keep", description="x")]
@@ -1693,6 +1715,7 @@ class TestPrivateFinalizeInteractive:
 class TestPrivateMergeInteractive:
     def test_no_branch_prints_message(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _merge_interactive
         tracked = _make_tracked(branch=None)
         ctx = MagicMock()
@@ -1700,6 +1723,7 @@ class TestPrivateMergeInteractive:
 
     def test_merge_success(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _merge_interactive
         tracked = _make_tracked(branch="autoresearch/test-mar31")
         ctx = MagicMock()
@@ -1711,6 +1735,7 @@ class TestPrivateMergeInteractive:
 
     def test_merge_exception_prints_error(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _merge_interactive
         tracked = _make_tracked(branch="autoresearch/test-mar31")
         ctx = MagicMock()
@@ -1724,6 +1749,7 @@ class TestPrivateMergeInteractive:
 class TestPrivateRunSingleMarker:
     def test_marker_config_none_prints_error(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_single_marker
         tracked = _make_tracked()
         ctx = MagicMock()
@@ -1732,8 +1758,9 @@ class TestPrivateRunSingleMarker:
 
     def test_run_success_prints_summary(self):
         from unittest.mock import MagicMock
-        from autoresearch.engine import RunResult
+
         from autoresearch.cli import _run_single_marker
+        from autoresearch.engine import RunResult
         tracked = _make_tracked()
         ctx = MagicMock()
         marker = _make_marker()
@@ -1754,8 +1781,9 @@ class TestPrivateRunSingleMarker:
 
     def test_run_engine_error_prints_error(self):
         from unittest.mock import MagicMock
-        from autoresearch.engine import EngineError
+
         from autoresearch.cli import _run_single_marker
+        from autoresearch.engine import EngineError
         tracked = _make_tracked()
         ctx = MagicMock()
         marker = _make_marker()
@@ -1770,8 +1798,9 @@ class TestPrivateRunSingleMarker:
 
     def test_run_result_no_metric(self):
         from unittest.mock import MagicMock
-        from autoresearch.engine import RunResult
+
         from autoresearch.cli import _run_single_marker
+        from autoresearch.engine import RunResult
         tracked = _make_tracked()
         ctx = MagicMock()
         marker = _make_marker()
@@ -1794,6 +1823,7 @@ class TestPrivateRunSingleMarker:
 class TestPrivateRunRepoMarkers:
     def test_skips_non_matching_repo(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_repo_markers
         tracked1 = _make_tracked(repo_path="/tmp/repo1", marker_id="repo1:m1")
         tracked1.repo_name = "repo1"
@@ -1801,13 +1831,16 @@ class TestPrivateRunRepoMarkers:
         tracked2.repo_name = "repo2"
         state = AppState(markers=[tracked1, tracked2])
         ctx = MagicMock()
-        with patch("autoresearch.cli._run_single_marker") as mock_run:
-            with patch("autoresearch.cli._resolve_marker_data", return_value=(None, _make_marker(), MarkerStatus.ACTIVE)):
+        with (
+            patch("autoresearch.cli._run_single_marker") as mock_run,
+            patch("autoresearch.cli._resolve_marker_data", return_value=(None, _make_marker(), MarkerStatus.ACTIVE)),
+        ):
                 _run_repo_markers(ctx, state, "repo1")
         assert mock_run.call_count == 1
 
     def test_skips_non_active_in_repo(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_repo_markers
         tracked = _make_tracked()
         state = AppState(markers=[tracked])
@@ -1823,6 +1856,7 @@ class TestPrivateRunRepoMarkers:
 class TestPrivateActionAdd:
     def test_no_marker_file_prints_error(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_add
         ctx = MagicMock()
         with patch("autoresearch.cli.find_marker_file", return_value=None):
@@ -1830,6 +1864,7 @@ class TestPrivateActionAdd:
 
     def test_bad_marker_file_prints_error(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_add
         ctx = MagicMock()
         with (
@@ -1840,6 +1875,7 @@ class TestPrivateActionAdd:
 
     def test_success_registers_markers(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_add
         ctx = MagicMock()
         marker = _make_marker()
@@ -1858,6 +1894,7 @@ class TestPrivateActionAdd:
 class TestPrivateActionDetach:
     def test_no_markers_prints_dim(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_detach_interactive
         ctx = MagicMock()
         state = AppState(markers=[])
@@ -1865,6 +1902,7 @@ class TestPrivateActionDetach:
 
     def test_detaches_selected_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_detach_interactive
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -1880,6 +1918,7 @@ class TestPrivateActionDetach:
 class TestPrivateActionRunSelected:
     def test_no_markers_prints_dim(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_run_selected_interactive
         ctx = MagicMock()
         state = AppState(markers=[])
@@ -1887,6 +1926,7 @@ class TestPrivateActionRunSelected:
 
     def test_runs_selected(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_run_selected_interactive
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -1902,6 +1942,7 @@ class TestPrivateActionRunSelected:
 class TestPrivateActionRunRepo:
     def test_no_repos_prints_dim(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_run_repo_interactive
         ctx = MagicMock()
         state = AppState(markers=[])
@@ -1909,6 +1950,7 @@ class TestPrivateActionRunRepo:
 
     def test_runs_selected_repo(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _action_run_repo_interactive
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -1924,6 +1966,7 @@ class TestPrivateActionRunRepo:
 class TestPrivateRepoMode:
     def test_load_markers_error_returns_early(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _repo_mode
         ctx = MagicMock()
         state = AppState(markers=[])
@@ -1933,6 +1976,7 @@ class TestPrivateRepoMode:
 
     def test_all_tracked_renders_table(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _repo_mode
         ctx = MagicMock()
         tracked = _make_tracked(repo_path=str(tmp_path))
@@ -1947,6 +1991,7 @@ class TestPrivateRepoMode:
 
     def test_untracked_markers_register_when_user_says_yes(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _repo_mode
         ctx = MagicMock()
         state = AppState(markers=[])
@@ -1962,6 +2007,7 @@ class TestPrivateRepoMode:
 
     def test_untracked_markers_skip_when_user_says_no(self, tmp_path):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _repo_mode
         ctx = MagicMock()
         state = AppState(markers=[])
@@ -1977,6 +2023,7 @@ class TestPrivateRepoMode:
 class TestInitCtxWhenNone:
     def test_init_ctx_sets_empty_dict_when_none(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _init_ctx
         ctx = MagicMock()
         ctx.obj = None
@@ -1985,6 +2032,7 @@ class TestInitCtxWhenNone:
 
     def test_init_ctx_does_not_overwrite_existing(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _init_ctx
         ctx = MagicMock()
         ctx.obj = {"key": "value"}
@@ -1999,6 +2047,7 @@ class TestInitCtxWhenNone:
 class TestHomeModePrivate:
     def test_home_mode_no_markers_no_output(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _home_mode
         ctx = MagicMock()
         state = AppState(markers=[])
@@ -2006,6 +2055,7 @@ class TestHomeModePrivate:
 
     def test_home_mode_with_tracked_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _home_mode
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2019,6 +2069,7 @@ class TestHomeModePrivate:
 
     def test_home_mode_with_unresolvable_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _home_mode
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2130,6 +2181,7 @@ class TestShowConfidenceInteractive:
 class TestFinalizeInteractive:
     def test_no_results_returns_early(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _finalize_interactive
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2138,6 +2190,7 @@ class TestFinalizeInteractive:
 
     def test_no_kept_branches(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _finalize_interactive
         from autoresearch.results import ExperimentResult
         ctx = MagicMock()
@@ -2151,6 +2204,7 @@ class TestFinalizeInteractive:
 
     def test_with_branches(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _finalize_interactive
         from autoresearch.results import ExperimentResult
         ctx = MagicMock()
@@ -2171,6 +2225,7 @@ class TestFinalizeInteractive:
 class TestMergeInteractive:
     def test_no_branch_prints_dim(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _merge_interactive
         ctx = MagicMock()
         tracked = _make_tracked()  # branch=None by default
@@ -2178,6 +2233,7 @@ class TestMergeInteractive:
 
     def test_merge_success(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _merge_interactive
         ctx = MagicMock()
         tracked = _make_tracked(branch="ar/test")
@@ -2189,6 +2245,7 @@ class TestMergeInteractive:
 
     def test_merge_failure_prints_error(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _merge_interactive
         ctx = MagicMock()
         tracked = _make_tracked(branch="ar/test")
@@ -2206,6 +2263,7 @@ class TestMergeInteractive:
 class TestRunSingleMarker:
     def test_no_marker_config_prints_error(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_single_marker
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2214,6 +2272,7 @@ class TestRunSingleMarker:
 
     def test_run_success_prints_summary(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import RunResult
         ctx = MagicMock()
@@ -2241,6 +2300,7 @@ class TestRunSingleMarker:
 
     def test_run_engine_error(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import EngineError
         ctx = MagicMock()
@@ -2256,6 +2316,7 @@ class TestRunSingleMarker:
 
     def test_run_no_final_metric(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_single_marker
         from autoresearch.engine import RunResult
         ctx = MagicMock()
@@ -2289,6 +2350,7 @@ class TestRunSingleMarker:
 class TestRunRepoMarkersPrivate:
     def test_skips_different_repo(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_repo_markers
         ctx = MagicMock()
         tracked = _make_tracked(marker_id="otherrepo:m", repo_path="/tmp/other")
@@ -2300,6 +2362,7 @@ class TestRunRepoMarkersPrivate:
 
     def test_skips_non_active(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_repo_markers
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2313,6 +2376,7 @@ class TestRunRepoMarkersPrivate:
 
     def test_runs_active_marker(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_repo_markers
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2360,8 +2424,9 @@ class TestShowBranchPrivate:
         _show_branch(tracked)
 
     def test_branch_with_git_log_success(self):
-        from autoresearch.cli import _show_branch
         from unittest.mock import MagicMock
+
+        from autoresearch.cli import _show_branch
         tracked = _make_tracked(branch="ar/test")
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -2370,8 +2435,9 @@ class TestShowBranchPrivate:
             _show_branch(tracked)
 
     def test_branch_with_git_log_empty(self):
-        from autoresearch.cli import _show_branch
         from unittest.mock import MagicMock
+
+        from autoresearch.cli import _show_branch
         tracked = _make_tracked(branch="ar/test")
         mock_result = MagicMock()
         mock_result.returncode = 1
@@ -2482,6 +2548,7 @@ class TestPrivateShowStatusEdgeCases:
 class TestPrivateRunSingleMarkerEdgeCases:
     def test_marker_not_found_prints_error(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_single_marker
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2492,6 +2559,7 @@ class TestPrivateRunSingleMarkerEdgeCases:
 
     def test_load_markers_error_prints_error(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _run_single_marker
         ctx = MagicMock()
         tracked = _make_tracked()
@@ -2534,6 +2602,7 @@ class TestHeadlessRunEdgeCases:
 class TestHomeModeWithMultipleMarkers:
     def test_multiple_tracked_markers(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _home_mode
         ctx = MagicMock()
         t1 = _make_tracked(marker_id="repo1:marker1", marker_name="marker1")
@@ -2854,7 +2923,7 @@ class TestResolveMarkerData:
             patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fake/.autoresearch.yaml")),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
-            mf_out, m, eff = _resolve_marker_data(tracked)
+            _mf_out, m, eff = _resolve_marker_data(tracked)
         assert m is None and eff is None
 
     def test_valid_marker_returns_data(self):
@@ -2866,7 +2935,7 @@ class TestResolveMarkerData:
             patch("autoresearch.cli.find_marker_file", return_value=Path("/tmp/fake/.autoresearch.yaml")),
             patch("autoresearch.cli.load_markers", return_value=mf),
         ):
-            mf_out, m, eff = _resolve_marker_data(tracked)
+            _mf_out, m, eff = _resolve_marker_data(tracked)
         assert m is not None
         assert eff is not None
 
@@ -3199,7 +3268,17 @@ class TestDaemonStatusHeadlessScheduled:
         assert data["data"]["pid"] == 12345
 
     def test_headless_status_scheduled_markers_listed(self, tmp_path):
-        from autoresearch.marker import Escalation, Marker, MarkerFile, MarkerStatus, Metric, MetricDirection, ResultsConfig, Schedule, Target
+        from autoresearch.marker import (
+            Escalation,
+            Marker,
+            MarkerFile,
+            MarkerStatus,
+            Metric,
+            MetricDirection,
+            ResultsConfig,
+            Schedule,
+            Target,
+        )
         from autoresearch.state import TrackedMarker
 
         tracked = TrackedMarker(
@@ -3472,7 +3551,18 @@ class TestShowResultsInteractive:
 class TestRunCmdModelOverride:
     def test_model_override_applied(self, tmp_path):
         from unittest.mock import MagicMock
-        from autoresearch.marker import AgentConfig, Escalation, Marker, MarkerStatus, Metric, MetricDirection, ResultsConfig, Schedule, Target
+
+        from autoresearch.marker import (
+            AgentConfig,
+            Escalation,
+            Marker,
+            MarkerStatus,
+            Metric,
+            MetricDirection,
+            ResultsConfig,
+            Schedule,
+            Target,
+        )
         from autoresearch.state import TrackedMarker
 
         tracked = TrackedMarker(
@@ -3765,6 +3855,7 @@ class TestMainCallbackHeadlessNoSubcommand:
 class TestToggleSkipPauseTrackedNotFound:
     def test_toggle_skip_when_tracked_is_none_no_crash(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_skip
         from autoresearch.state import TrackedMarker
 
@@ -3783,6 +3874,7 @@ class TestToggleSkipPauseTrackedNotFound:
 
     def test_toggle_pause_when_tracked_is_none_no_crash(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _toggle_pause
         from autoresearch.state import TrackedMarker
 
@@ -3807,6 +3899,7 @@ class TestToggleSkipPauseTrackedNotFound:
 class TestFinalizeInteractiveNoResults:
     def test_no_results_prints_dim_and_returns(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _finalize_interactive
         from autoresearch.state import TrackedMarker
 
@@ -3822,6 +3915,7 @@ class TestFinalizeInteractiveNoResults:
 
     def test_no_kept_experiments_prints_dim(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _finalize_interactive
         from autoresearch.results import ExperimentResult
         from autoresearch.state import TrackedMarker
@@ -3858,6 +3952,7 @@ class TestFinalizeInteractiveNoResults:
 class TestMergeInteractiveNoBranch:
     def test_no_branch_prints_dim(self):
         from unittest.mock import MagicMock
+
         from autoresearch.cli import _merge_interactive
         from autoresearch.state import TrackedMarker
 
@@ -3873,9 +3968,11 @@ class TestMergeInteractiveNoBranch:
 
     def test_merge_exception_shows_error(self):
         from unittest.mock import MagicMock
+
+        from rich.prompt import Prompt
+
         from autoresearch.cli import _merge_interactive
         from autoresearch.state import TrackedMarker
-        from rich.prompt import Prompt
 
         tracked = TrackedMarker(
             id="repo:m",
@@ -4068,7 +4165,9 @@ class TestRunCmdNoMarkerNoRepo:
 class TestHeadlessConfirmInteractive:
     def test_user_answers_yes(self):
         from unittest.mock import MagicMock
+
         import typer
+
         from autoresearch.cli_utils import headless_confirm
 
         ctx = MagicMock(spec=typer.Context)
@@ -4079,7 +4178,9 @@ class TestHeadlessConfirmInteractive:
 
     def test_user_answers_no(self):
         from unittest.mock import MagicMock
+
         import typer
+
         from autoresearch.cli_utils import headless_confirm
 
         ctx = MagicMock(spec=typer.Context)
@@ -4090,7 +4191,9 @@ class TestHeadlessConfirmInteractive:
 
     def test_default_false_passes_n(self):
         from unittest.mock import MagicMock
+
         import typer
+
         from autoresearch.cli_utils import headless_confirm
 
         ctx = MagicMock(spec=typer.Context)
@@ -4107,7 +4210,9 @@ class TestHeadlessConfirmInteractive:
 class TestHeadlessPromptInteractive:
     def test_prompts_user_returns_value(self):
         from unittest.mock import MagicMock
+
         import typer
+
         from autoresearch.cli_utils import headless_prompt
 
         ctx = MagicMock(spec=typer.Context)
@@ -4118,7 +4223,9 @@ class TestHeadlessPromptInteractive:
 
     def test_interactive_with_no_default(self):
         from unittest.mock import MagicMock
+
         import typer
+
         from autoresearch.cli_utils import headless_prompt
 
         ctx = MagicMock(spec=typer.Context)
@@ -4219,6 +4326,7 @@ class TestRunRepoSkipsNonActiveNonHeadless:
 class TestStatusMenuInteractiveActions:
     def _make_ctx(self):
         from unittest.mock import MagicMock
+
         import typer
         ctx = MagicMock(spec=typer.Context)
         ctx.obj = {"headless": False}
@@ -4286,6 +4394,7 @@ class TestStatusMenuInteractiveActions:
 class TestMarkerSubmenuInteractiveActions:
     def _make_ctx(self):
         from unittest.mock import MagicMock
+
         import typer
         ctx = MagicMock(spec=typer.Context)
         ctx.obj = {"headless": False}
@@ -5132,16 +5241,20 @@ class TestHeadlessSkipExtra:
     def test_skip_tracked_exits_0(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state):
-            with patch("autoresearch.cli.save_state"):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
                 result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
         assert result.exit_code == 0
 
     def test_skip_output_is_json(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state):
-            with patch("autoresearch.cli.save_state"):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
                 result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -5161,16 +5274,20 @@ class TestHeadlessPauseExtra:
     def test_pause_tracked_exits_0(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state):
-            with patch("autoresearch.cli.save_state"):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
                 result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
         assert result.exit_code == 0
 
     def test_pause_output_is_json(self, tmp_path):
         tracked = _make_tracked(repo_path=str(tmp_path))
         state = AppState(markers=[tracked])
-        with patch("autoresearch.cli.load_state", return_value=state):
-            with patch("autoresearch.cli.save_state"):
+        with (
+            patch("autoresearch.cli.load_state", return_value=state),
+            patch("autoresearch.cli.save_state"),
+        ):
                 result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
         data = json.loads(result.output)
         assert isinstance(data, dict)
@@ -5338,7 +5455,7 @@ class TestHeadlessStatusFieldsB:
         return tracked, state
 
     def test_status_exit_0_found(self, tmp_path):
-        tracked, state = self._tracked_with_state()
+        _tracked, state = self._tracked_with_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.find_marker_file", return_value=None):
             result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
@@ -5350,7 +5467,7 @@ class TestHeadlessStatusFieldsB:
         assert result.exit_code == 1
 
     def test_status_data_has_id(self, tmp_path):
-        tracked, state = self._tracked_with_state()
+        _tracked, state = self._tracked_with_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.find_marker_file", return_value=None):
             result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
@@ -5358,7 +5475,7 @@ class TestHeadlessStatusFieldsB:
         assert "id" in data.get("data", data)
 
     def test_status_json_parseable(self, tmp_path):
-        tracked, state = self._tracked_with_state()
+        _tracked, state = self._tracked_with_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.find_marker_file", return_value=None):
             result = runner.invoke(app, ["--headless", "status", "-m", "fakerepo:test-marker"])
@@ -5378,7 +5495,7 @@ class TestHeadlessSkipFieldsB:
         return tracked, state
 
     def test_skip_exit_0_found(self):
-        tracked, state = self._tracked_state()
+        _tracked, state = self._tracked_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.save_state"):
             result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
@@ -5390,7 +5507,7 @@ class TestHeadlessSkipFieldsB:
         assert result.exit_code == 1
 
     def test_skip_json_parseable(self):
-        tracked, state = self._tracked_state()
+        _tracked, state = self._tracked_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.save_state"):
             result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
@@ -5403,7 +5520,7 @@ class TestHeadlessSkipFieldsB:
         assert data["status"] == "error"
 
     def test_skip_status_ok(self):
-        tracked, state = self._tracked_state()
+        _tracked, state = self._tracked_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.save_state"):
             result = runner.invoke(app, ["--headless", "skip", "-m", "fakerepo:test-marker"])
@@ -5418,7 +5535,7 @@ class TestHeadlessPauseFieldsB:
         return tracked, state
 
     def test_pause_exit_0_found(self):
-        tracked, state = self._tracked_state()
+        _tracked, state = self._tracked_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.save_state"):
             result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
@@ -5430,7 +5547,7 @@ class TestHeadlessPauseFieldsB:
         assert result.exit_code == 1
 
     def test_pause_json_parseable(self):
-        tracked, state = self._tracked_state()
+        _tracked, state = self._tracked_state()
         with patch("autoresearch.cli.load_state", return_value=state), \
              patch("autoresearch.cli.save_state"):
             result = runner.invoke(app, ["--headless", "pause", "-m", "fakerepo:test-marker"])
