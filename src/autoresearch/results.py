@@ -68,6 +68,11 @@ def append_result(repo_path: Path, marker_name: str, result: ExperimentResult) -
                 result.commit,
                 result.metric,
                 result.guard,
+                result.status,
+                result.confidence,
+                result.description,
+            ]
+        )
 
 
 def get_latest_metric(results: list[ExperimentResult]) -> float | None:

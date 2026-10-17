@@ -334,9 +334,9 @@ def confidence_cmd(
 @app.command("init")
 def init_cmd(
     ctx: typer.Context,
-    path: Path = typer.Option(
+    path: Path = typer.Option(  # noqa: B008 -- Typer reads option metadata from parameter defaults.
         ".", "--path", help="Repo path (default: current directory)"
-    ),  # noqa: B008 -- Typer reads option metadata from parameter defaults.
+    ),
     no_claude: bool = typer.Option(
         False, "--no-claude", help="Skip Claude onboard wizard, scaffold only"
     ),
@@ -483,9 +483,9 @@ markers:
 @app.command("add")
 def add_cmd(
     ctx: typer.Context,
-    path: Path = typer.Option(
+    path: Path = typer.Option(  # noqa: B008 -- Typer reads option metadata from parameter defaults.
         ..., "--path", help="Path to repo containing .autoresearch/config.yaml"
-    ),  # noqa: B008 -- Typer reads option metadata from parameter defaults.
+    ),
 ):
     """Register markers from a repo."""
     _init_ctx(ctx)
