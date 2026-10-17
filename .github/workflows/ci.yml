@@ -38,7 +38,7 @@ jobs:
 
       - name: Size gate rejects a new oversized unit
         run: |
-          printf "def oversized(a, b, c, d, e, f, g, h):\n    return a\n" > scripts/size_control.py
+          printf "def oversized(a, b, c, d, e, f, g, h):  # noqa: PLR0913\n    return a\n" > scripts/size_control.py
           if python scripts/size_gate.py > size-control.log 2>&1; then
             cat size-control.log
             exit 1

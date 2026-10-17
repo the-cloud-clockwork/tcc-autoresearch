@@ -54,6 +54,7 @@ def measurements() -> dict[str, int]:
             "ruff",
             "check",
             "--isolated",
+            "--ignore-noqa",
             "--select",
             "C901,PLR0912,PLR0913",
             "--config",
