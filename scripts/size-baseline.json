@@ -1,0 +1,20 @@
+{
+  "src/autoresearch/cli.py:_dispatch_main_action:C901": 16,
+  "src/autoresearch/cli.py:_dispatch_main_action:PLR0912": 17,
+  "src/autoresearch/cli.py:_dispatch_submenu_action:C901": 13,
+  "src/autoresearch/cli.py:clean_cmd:C901": 15,
+  "src/autoresearch/cli.py:clean_cmd:PLR0912": 16,
+  "src/autoresearch/engine.py:_record_discard_metric:PLR0913": 8,
+  "src/autoresearch/engine.py:_run_guard_gate:PLR0913": 10,
+  "src/autoresearch/engine.py:run_marker:C901": 21,
+  "src/autoresearch/engine.py:run_marker:PLR0912": 16,
+  "src/autoresearch/engine.py:run_marker:PLR0913": 9,
+  "src/autoresearch/engine.py:run_marker:function-lines": 306,
+  "src/autoresearch/finalize.py:finalize_marker:C901": 13,
+  "tests/test_cli.py:file-lines": 7469,
+  "tests/test_daemon.py:file-lines": 3680,
+  "tests/test_engine.py:TestHandleGuardFailureAgentFails.test_agent_fail_during_rework_does_not_commit:PLR0913": 9,
+  "tests/test_engine.py:TestRunMarker.test_guard_failure_rework_succeeds:PLR0913": 9,
+  "tests/test_engine.py:TestRunMarker.test_guard_rework_all_attempts_fail:PLR0913": 9,
+  "tests/test_engine.py:file-lines": 6738
+}

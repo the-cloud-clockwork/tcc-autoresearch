@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -132,7 +133,9 @@ def main(
     ctx: typer.Context,
     headless: bool = typer.Option(False, "--headless", help="JSON output, no prompts"),
     verbose: bool = typer.Option(False, "--verbose", help="Extended debug output"),
-    config: Path | None = typer.Option(None, "--config", help="Override config path"),  # noqa: B008 -- Typer reads option metadata from parameter defaults.
+    config: Optional[Path] = typer.Option(  # noqa: UP045, B008 -- Typer 0.12 requires Optional and option defaults.
+        None, "--config", help="Override config path"
+    ),
 ):
     ctx.ensure_object(dict)
     ctx.obj["headless"] = headless
@@ -860,12 +863,16 @@ def _print_run_results(results_list: list) -> None:
 @app.command("run")
 def run_cmd(
     ctx: typer.Context,
-    marker: str | None = typer.Option(None, "--marker", "-m", help="Marker ID to run"),
-    repo: str | None = typer.Option(
+    marker: Optional[str] = typer.Option(  # noqa: UP045 -- Typer 0.12 requires typing.Optional.
+        None, "--marker", "-m", help="Marker ID to run"
+    ),
+    repo: Optional[str] = typer.Option(  # noqa: UP045 -- Typer 0.12 requires typing.Optional.
         None, "--repo", help="Run all active markers in repo"
     ),
-    model: str | None = typer.Option(None, "--model", help="Override LLM model"),
-    auto_merge: bool | None = typer.Option(
+    model: Optional[str] = typer.Option(  # noqa: UP045 -- Typer 0.12 requires typing.Optional.
+        None, "--model", help="Override LLM model"
+    ),
+    auto_merge: Optional[bool] = typer.Option(  # noqa: UP045 -- Typer 0.12 requires typing.Optional.
         None, "--auto-merge/--no-auto-merge", help="Override auto_merge.enabled"
     ),
 ):
@@ -948,7 +955,7 @@ def finalize_cmd(
 def merge_cmd(
     ctx: typer.Context,
     marker: str = typer.Option(..., "--marker", "-m", help="Marker ID to merge"),
-    branch: str | None = typer.Option(
+    branch: Optional[str] = typer.Option(  # noqa: UP045 -- Typer 0.12 requires typing.Optional.
         None, "--branch", help="Branch to merge (default: marker's branch)"
     ),
     target: str = typer.Option("main", "--target", help="Target branch to merge into"),
@@ -996,7 +1003,7 @@ def merge_cmd(
 @app.command("clean")
 def clean_cmd(
     ctx: typer.Context,
-    marker_name: str | None = typer.Option(
+    marker_name: Optional[str] = typer.Option(  # noqa: UP045 -- Typer 0.12 requires typing.Optional.
         None, "--marker", "-m", help="Marker name to clean branches for"
     ),
     dry_run: bool = typer.Option(
