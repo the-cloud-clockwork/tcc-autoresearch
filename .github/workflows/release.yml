@@ -20,4 +20,5 @@ jobs:
       bump: ${{ inputs.bump }}
       downstream_workflows: "workflow.yaml"
     secrets:
-      RELEASE_TOKEN: ${{ secrets.ORG_GITHUB_TOKEN }}
+      TCC_CI_CLIENT_ID: ${{ secrets.TCC_CI_CLIENT_ID }}
+      TCC_CI_APP_PRIVATE_KEY: ${{ secrets.TCC_CI_APP_PRIVATE_KEY }}
