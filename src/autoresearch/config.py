@@ -7,7 +7,6 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel
 
-
 AUTORESEARCH_DIR = Path.home() / ".autoresearch"
 CONFIG_PATH = AUTORESEARCH_DIR / "config.yaml"
 AGENTS_DIR = ".autoresearch/agents"

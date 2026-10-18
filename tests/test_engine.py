@@ -2,6 +2,7 @@
 
 import subprocess
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,9 +36,8 @@ from autoresearch.marker import (
     Schedule,
     Target,
 )
-from autoresearch.metrics import HarnessResult, GuardResult
+from autoresearch.metrics import GuardResult, HarnessResult
 from autoresearch.state import AppState, DaemonState, TrackedMarker
-
 
 # --- Fixtures and helpers ---
 
@@ -111,10 +111,15 @@ def git_repo(tmp_path):
         "HOME": str(tmp_path),
     }
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, env=env)
-    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True, env=env)
+    subprocess.run(
+        ["git", "add", "."], cwd=repo, check=True, capture_output=True, env=env
+    )
     subprocess.run(
         ["git", "commit", "-m", "initial"],
-        cwd=repo, check=True, capture_output=True, env=env,
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        env=env,
     )
     return repo
 
@@ -223,25 +228,40 @@ class TestParseBudget:
 
 class TestTargetReached:
     def test_higher_reached(self):
-        marker = _make_marker(metric=Metric(
-            command="echo 1", extract="cat",
-            direction=MetricDirection.HIGHER, baseline=3, target=10,
-        ))
+        marker = _make_marker(
+            metric=Metric(
+                command="echo 1",
+                extract="cat",
+                direction=MetricDirection.HIGHER,
+                baseline=3,
+                target=10,
+            )
+        )
         assert _target_reached(marker, 10) is True
         assert _target_reached(marker, 11) is True
 
     def test_higher_not_reached(self):
-        marker = _make_marker(metric=Metric(
-            command="echo 1", extract="cat",
-            direction=MetricDirection.HIGHER, baseline=3, target=10,
-        ))
+        marker = _make_marker(
+            metric=Metric(
+                command="echo 1",
+                extract="cat",
+                direction=MetricDirection.HIGHER,
+                baseline=3,
+                target=10,
+            )
+        )
         assert _target_reached(marker, 9) is False
 
     def test_lower_reached(self):
-        marker = _make_marker(metric=Metric(
-            command="echo 1", extract="cat",
-            direction=MetricDirection.LOWER, baseline=100, target=50,
-        ))
+        marker = _make_marker(
+            metric=Metric(
+                command="echo 1",
+                extract="cat",
+                direction=MetricDirection.LOWER,
+                baseline=100,
+                target=50,
+            )
+        )
         assert _target_reached(marker, 50) is True
         assert _target_reached(marker, 40) is True
 
@@ -259,8 +279,12 @@ class TestRunMarker:
         runner = FakeAgentRunner([AgentResult(True, "test", 0, "")])
         with pytest.raises(EngineError, match="not active"):
             run_marker(
-                git_repo, marker, _make_state(), _make_tracked(),
-                runner, worktree_base=tmp_path / "wt",
+                git_repo,
+                marker,
+                _make_state(),
+                _make_tracked(),
+                runner,
+                worktree_base=tmp_path / "wt",
             )
 
     def test_bad_repo_raises(self, tmp_path):
@@ -268,30 +292,46 @@ class TestRunMarker:
         runner = FakeAgentRunner([AgentResult(True, "test", 0, "")])
         with pytest.raises(EngineError, match="does not exist"):
             run_marker(
-                tmp_path / "nonexistent", marker, _make_state(), _make_tracked(),
-                runner, worktree_base=tmp_path / "wt",
+                tmp_path / "nonexistent",
+                marker,
+                _make_state(),
+                _make_tracked(),
+                runner,
+                worktree_base=tmp_path / "wt",
             )
 
     @patch("autoresearch.engine.run_harness")
     def test_happy_path_keeps_improved(self, mock_harness, git_repo, tmp_path):
         """Agent makes change, metric improves -> keep."""
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="5 passed", stderr="",
-            metric=5.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="5 passed",
+            stderr="",
+            metric=5.0,
+            log_path=tmp_path / "run.log",
         )
+
         # Agent that makes a real file change
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count + 1}\n")
                 return AgentResult(True, f"change x to {self.call_count + 1}", 0, "")
 
-        marker = _make_marker(agent=AgentConfig(max_experiments=2, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=2, budget_per_experiment="1m")
+        )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WritingAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.kept >= 1
         assert result.final_metric == 5.0
@@ -301,22 +341,33 @@ class TestRunMarker:
     def test_discard_when_not_improved(self, mock_harness, git_repo, tmp_path):
         """Metric doesn't improve -> discard."""
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="2 passed", stderr="",
-            metric=2.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="2 passed",
+            stderr="",
+            metric=2.0,
+            log_path=tmp_path / "run.log",
         )
 
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count}\n")
                 return AgentResult(True, "regressed", 0, "")
 
-        marker = _make_marker(agent=AgentConfig(max_experiments=2, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=2, budget_per_experiment="1m")
+        )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WritingAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.discarded == 2
         assert result.kept == 0
@@ -325,35 +376,55 @@ class TestRunMarker:
     def test_crash_handling(self, mock_harness, git_repo, tmp_path):
         """Harness returns None metric -> crash."""
         mock_harness.return_value = HarnessResult(
-            exit_code=1, stdout="error", stderr="",
-            metric=None, log_path=tmp_path / "run.log",
+            exit_code=1,
+            stdout="error",
+            stderr="",
+            metric=None,
+            log_path=tmp_path / "run.log",
         )
 
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 # Start from 10 to avoid collision with initial content (x = 1)
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count + 10}\n")
                 return AgentResult(True, "crashed change", 0, "")
 
-        marker = _make_marker(agent=AgentConfig(max_experiments=2, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=2, budget_per_experiment="1m")
+        )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WritingAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.crashed == 2
 
     def test_no_changes_is_discard(self, git_repo, tmp_path):
         """Agent succeeds but makes no file changes -> discard."""
-        runner = FakeAgentRunner([
-            AgentResult(True, "no-op", 0, ""),
-        ])
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        runner = FakeAgentRunner(
+            [
+                AgentResult(True, "no-op", 0, ""),
+            ]
+        )
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            runner, worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            runner,
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.discarded == 1
         assert result.kept == 0
@@ -362,23 +433,34 @@ class TestRunMarker:
     def test_escalation_to_halt(self, mock_harness, git_repo, tmp_path):
         """Enough failures trigger halt."""
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="2", stderr="",
-            metric=2.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="2",
+            stderr="",
+            metric=2.0,
+            log_path=tmp_path / "run.log",
         )
 
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count}\n")
                 return AgentResult(True, "attempt", 0, "")
 
         # 3 pivots at 5 failures each = 15 failures to halt
-        marker = _make_marker(agent=AgentConfig(max_experiments=20, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=20, budget_per_experiment="1m")
+        )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WritingAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.final_status == "halted"
 
@@ -386,13 +468,17 @@ class TestRunMarker:
     def test_target_reached_completes(self, mock_harness, git_repo, tmp_path):
         """Reaching target metric completes the run."""
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="10 passed", stderr="",
-            metric=10.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="10 passed",
+            stderr="",
+            metric=10.0,
+            log_path=tmp_path / "run.log",
         )
 
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count}\n")
@@ -409,8 +495,13 @@ class TestRunMarker:
             agent=AgentConfig(max_experiments=5, budget_per_experiment="1m"),
         )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WritingAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.final_status == "completed"
         assert result.kept >= 1
@@ -420,29 +511,39 @@ class TestRunMarker:
     def test_guard_failure_discards(self, mock_guard, mock_harness, git_repo, tmp_path):
         """Guard failure after rework exhaustion -> discard."""
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="5 passed", stderr="",
-            metric=5.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="5 passed",
+            stderr="",
+            metric=5.0,
+            log_path=tmp_path / "run.log",
         )
         mock_guard.return_value = GuardResult(passed=False, value=10.0, output="failed")
 
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count}\n")
                 return AgentResult(True, "guard test", 0, "")
 
         marker = _make_marker(
-            guard=Guard(command="pytest -q", extract=None, threshold=None, rework_attempts=1),
+            guard=Guard(
+                command="pytest -q", extract=None, threshold=None, rework_attempts=1
+            ),
             agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"),
         )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WritingAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.discarded == 1
-
 
     @patch("autoresearch.engine.remove_worktree")
     @patch("autoresearch.engine.create_worktree")
@@ -451,15 +552,32 @@ class TestRunMarker:
     @patch("autoresearch.engine.git_commit", return_value="abc1234")
     @patch("autoresearch.engine.run_harness")
     @patch("autoresearch.engine.run_guard")
-    def test_guard_failure_rework_succeeds(self, mock_guard, mock_harness, mock_commit, mock_reset, mock_head, mock_create_wt, mock_rm_wt, git_repo, tmp_path):
+    def test_guard_failure_rework_succeeds(
+        self,
+        mock_guard,
+        mock_harness,
+        mock_commit,
+        mock_reset,
+        mock_head,
+        mock_create_wt,
+        mock_rm_wt,
+        git_repo,
+        tmp_path,
+    ):
         """Guard failure -> rework fixes it -> keep."""
         wt_path = tmp_path / "wt" / "test-marker"
         wt_path.mkdir(parents=True, exist_ok=True)
         from autoresearch.worktree import WorktreeInfo
-        mock_create_wt.return_value = WorktreeInfo(path=wt_path, branch="autoresearch/test", base_commit="abc1234")
+
+        mock_create_wt.return_value = WorktreeInfo(
+            path=wt_path, branch="autoresearch/test", base_commit="abc1234"
+        )
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="5 passed", stderr="",
-            metric=5.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="5 passed",
+            stderr="",
+            metric=5.0,
+            log_path=tmp_path / "run.log",
         )
         # First guard fails, rework guard passes
         mock_guard.side_effect = [
@@ -470,18 +588,26 @@ class TestRunMarker:
         class CountingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 return AgentResult(True, "rework test", 0, "")
 
         marker = _make_marker(
-            guard=Guard(command="pytest -q", extract=None, threshold=None, rework_attempts=2),
+            guard=Guard(
+                command="pytest -q", extract=None, threshold=None, rework_attempts=2
+            ),
             agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"),
         )
         agent = CountingAgent()
         run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            agent, worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            agent,
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert mock_guard.call_count == 2  # Main guard + rework guard
         assert agent.call_count >= 2  # Initial + rework invoke
@@ -493,63 +619,101 @@ class TestRunMarker:
     @patch("autoresearch.engine.git_commit", return_value="abc1234")
     @patch("autoresearch.engine.run_harness")
     @patch("autoresearch.engine.run_guard")
-    def test_guard_rework_all_attempts_fail(self, mock_guard, mock_harness, mock_commit, mock_reset, mock_head, mock_create_wt, mock_rm_wt, git_repo, tmp_path):
+    def test_guard_rework_all_attempts_fail(
+        self,
+        mock_guard,
+        mock_harness,
+        mock_commit,
+        mock_reset,
+        mock_head,
+        mock_create_wt,
+        mock_rm_wt,
+        git_repo,
+        tmp_path,
+    ):
         """Guard failure -> all rework attempts fail -> discard."""
         wt_path = tmp_path / "wt" / "test-marker"
         wt_path.mkdir(parents=True, exist_ok=True)
         from autoresearch.worktree import WorktreeInfo
-        mock_create_wt.return_value = WorktreeInfo(path=wt_path, branch="autoresearch/test", base_commit="abc1234")
+
+        mock_create_wt.return_value = WorktreeInfo(
+            path=wt_path, branch="autoresearch/test", base_commit="abc1234"
+        )
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="5 passed", stderr="",
-            metric=5.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="5 passed",
+            stderr="",
+            metric=5.0,
+            log_path=tmp_path / "run.log",
         )
         mock_guard.return_value = GuardResult(passed=False, value=10.0, output="failed")
 
         class CountingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 return AgentResult(True, "rework test", 0, "")
 
         marker = _make_marker(
-            guard=Guard(command="pytest -q", extract=None, threshold=None, rework_attempts=3),
+            guard=Guard(
+                command="pytest -q", extract=None, threshold=None, rework_attempts=3
+            ),
             agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"),
         )
         agent = CountingAgent()
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            agent, worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            agent,
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.discarded >= 1
 
     def test_state_updated_after_run(self, git_repo, tmp_path):
         """Tracked marker state is updated after the run."""
+
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count}\n")
                 return AgentResult(True, "update", 0, "")
 
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
         tracked = _make_tracked()
         state = _make_state()
         state.markers.append(tracked)
 
         state_path = tmp_path / "state.json"
-        from autoresearch.state import save_state, load_state
+        from autoresearch.state import load_state, save_state
+
         save_state(state, state_path)
 
         with patch("autoresearch.engine.run_harness") as mock_h:
             mock_h.return_value = HarnessResult(
-                exit_code=0, stdout="5 passed", stderr="",
-                metric=5.0, log_path=tmp_path / "run.log",
+                exit_code=0,
+                stdout="5 passed",
+                stderr="",
+                metric=5.0,
+                log_path=tmp_path / "run.log",
             )
             run_marker(
-                git_repo, marker, state, tracked,
-                WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+                git_repo,
+                marker,
+                state,
+                tracked,
+                WritingAgent(),
+                worktree_base=tmp_path / "wt",
+                cleanup_worktree=False,
                 state_path=state_path,
             )
 
@@ -593,12 +757,24 @@ class TestFakeAgentRunner:
 
 
 class TestFormatResultsForProgram:
-    def _make_result(self, commit="abc1234", metric=5.0, guard="pass", status="keep",
-                     confidence="1.5x", description="test"):
+    def _make_result(
+        self,
+        commit="abc1234",
+        metric=5.0,
+        guard="pass",
+        status="keep",
+        confidence="1.5x",
+        description="test",
+    ):
         from autoresearch.results import ExperimentResult
+
         return ExperimentResult(
-            commit=commit, metric=metric, guard=guard,
-            status=status, confidence=confidence, description=description,
+            commit=commit,
+            metric=metric,
+            guard=guard,
+            status=status,
+            confidence=confidence,
+            description=description,
         )
 
     def test_empty_returns_empty_string(self):
@@ -761,6 +937,7 @@ class TestResetToBeforeCommit:
     @patch("autoresearch.engine.git_reset_hard")
     def test_swallows_git_error(self, mock_reset):
         from autoresearch.worktree import GitError
+
         mock_reset.side_effect = GitError("git error")
         # Should not raise
         _reset_to_before_commit(Path("/tmp/wt"), "abc1234")
@@ -830,6 +1007,7 @@ class TestEscalationStateEdgeCases:
 class TestClaudeCodeRunnerInvoke:
     def _make_paths(self, tmp_path):
         from autoresearch.agent_profile import AgentPaths
+
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
         return AgentPaths(
@@ -846,6 +1024,7 @@ class TestClaudeCodeRunnerInvoke:
         marker = _make_marker()
         runner = ClaudeCodeRunner(marker=marker)
         from autoresearch.engine import AgentError
+
         with pytest.raises(AgentError, match="claude"):
             runner.invoke(tmp_path, "program", "5m")
 
@@ -864,7 +1043,10 @@ class TestClaudeCodeRunnerInvoke:
             patch("autoresearch.engine.subprocess.run", return_value=mock_proc),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value="done"),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="done",
+            ),
         ):
             result = runner.invoke(tmp_path, "program", "5m")
 
@@ -886,7 +1068,10 @@ class TestClaudeCodeRunnerInvoke:
             patch("autoresearch.engine.subprocess.run", return_value=mock_proc),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             result = runner.invoke(tmp_path, "program", "5m")
 
@@ -952,7 +1137,10 @@ class TestClaudeCodeRunnerInvoke:
             patch("autoresearch.engine.subprocess.run", side_effect=capture_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             runner.invoke(tmp_path, "program", "5m")
 
@@ -983,7 +1171,9 @@ class TestWriteTelemetryFeedbackException:
         telem.permission_denials = ["denied1"]
         agent_result = AgentResult(True, "desc", 0, "", telemetry=telem)
 
-        with patch("autoresearch.engine.append_idea", side_effect=ValueError("bad path")):
+        with patch(
+            "autoresearch.engine.append_idea", side_effect=ValueError("bad path")
+        ):
             _write_telemetry_feedback(tmp_path, "test-marker", agent_result)
 
 
@@ -1000,18 +1190,26 @@ class TestRunMarkerCleanup:
             exit_code=0, stdout="3 passed", stderr="", metric=3.0
         )
 
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
         runner = FakeAgentRunner([AgentResult(True, "done", 0, "")])
 
         with (
-            patch("autoresearch.engine.remove_worktree", side_effect=WtGitError("rm fail")),
+            patch(
+                "autoresearch.engine.remove_worktree", side_effect=WtGitError("rm fail")
+            ),
             patch("autoresearch.engine.git_commit", return_value="abc1234"),
             patch("autoresearch.engine.git_head_short", return_value="abc1234"),
         ):
             # Should not raise even if remove_worktree fails
             result = run_marker(
-                git_repo, marker, _make_state(), _make_tracked(),
-                runner, worktree_base=tmp_path / "wt",
+                git_repo,
+                marker,
+                _make_state(),
+                _make_tracked(),
+                runner,
+                worktree_base=tmp_path / "wt",
                 cleanup_worktree=True,
             )
         assert result is not None
@@ -1025,6 +1223,7 @@ class TestClaudeCodeRunnerCmdBranches:
 
     def _make_paths(self, tmp_path):
         from autoresearch.agent_profile import AgentPaths
+
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
         return AgentPaths(
@@ -1054,13 +1253,17 @@ class TestClaudeCodeRunnerCmdBranches:
             patch("autoresearch.engine.subprocess.run", side_effect=capture_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "5m")
         return captured["cmd"]
 
     def test_effort_flag_added(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(effort="high"))
         cmd = self._invoke_capturing_cmd(marker, tmp_path)
         assert "--effort" in cmd
@@ -1068,12 +1271,14 @@ class TestClaudeCodeRunnerCmdBranches:
 
     def test_no_effort_flag_when_empty(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(effort=""))
         cmd = self._invoke_capturing_cmd(marker, tmp_path)
         assert "--effort" not in cmd
 
     def test_allowed_tools_appended(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(allowed_tools=["Bash(pytest:*)"]))
         cmd = self._invoke_capturing_cmd(marker, tmp_path)
         assert "--allowedTools" in cmd
@@ -1082,6 +1287,7 @@ class TestClaudeCodeRunnerCmdBranches:
 
     def test_disallowed_tools_appended(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(disallowed_tools=["Bash(rm:*)"]))
         cmd = self._invoke_capturing_cmd(marker, tmp_path)
         assert "--disallowedTools" in cmd
@@ -1089,12 +1295,17 @@ class TestClaudeCodeRunnerCmdBranches:
 
     def test_extra_flags_appended(self, tmp_path):
         from autoresearch.marker import AgentConfig
-        marker = _make_marker(agent=AgentConfig(extra_flags=["--dangerously-skip-permissions"]))
+
+        marker = _make_marker(
+            agent=AgentConfig(extra_flags=["--dangerously-skip-permissions"])
+        )
         cmd = self._invoke_capturing_cmd(marker, tmp_path)
         assert "--dangerously-skip-permissions" in cmd
 
     def test_model_from_agent_config_opus(self, tmp_path):
-        marker = _make_marker(agent=AgentConfig(model="opus", budget_per_experiment="5m"))
+        marker = _make_marker(
+            agent=AgentConfig(model="opus", budget_per_experiment="5m")
+        )
         cmd = self._invoke_capturing_cmd(marker, tmp_path)
         assert "--model" in cmd
         idx = cmd.index("--model")
@@ -1106,14 +1317,21 @@ class TestClaudeCodeRunnerCmdBranches:
 
 class TestRunMarkerStatePath:
     @patch("autoresearch.engine.run_harness")
-    def test_saves_state_when_state_path_provided(self, mock_harness, git_repo, tmp_path):
+    def test_saves_state_when_state_path_provided(
+        self, mock_harness, git_repo, tmp_path
+    ):
         """When state_path is provided, save_state is called."""
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="5 passed", stderr="",
-            metric=5.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="5 passed",
+            stderr="",
+            metric=5.0,
+            log_path=tmp_path / "run.log",
         )
         state_path = tmp_path / "state.json"
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
 
         class WriteAgent(AgentRunner):
             def invoke(self, wt, prog, budget):
@@ -1121,9 +1339,14 @@ class TestRunMarkerStatePath:
                 return AgentResult(True, "wrote", 0, "")
 
         run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WriteAgent(), worktree_base=tmp_path / "wt",
-            cleanup_worktree=False, state_path=state_path,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WriteAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
+            state_path=state_path,
         )
         assert state_path.is_file()
 
@@ -1134,12 +1357,19 @@ class TestRunMarkerStatePath:
 class TestRunMarkerNoCleanup:
     @patch("autoresearch.engine.run_harness")
     @patch("autoresearch.engine.remove_worktree")
-    def test_no_cleanup_skips_remove_worktree(self, mock_remove, mock_harness, git_repo, tmp_path):
+    def test_no_cleanup_skips_remove_worktree(
+        self, mock_remove, mock_harness, git_repo, tmp_path
+    ):
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="5 passed", stderr="",
-            metric=5.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="5 passed",
+            stderr="",
+            metric=5.0,
+            log_path=tmp_path / "run.log",
         )
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
 
         class WriteAgent(AgentRunner):
             def invoke(self, wt, prog, budget):
@@ -1147,8 +1377,12 @@ class TestRunMarkerNoCleanup:
                 return AgentResult(True, "wrote", 0, "")
 
         run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WriteAgent(), worktree_base=tmp_path / "wt",
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WriteAgent(),
+            worktree_base=tmp_path / "wt",
             cleanup_worktree=False,
         )
         mock_remove.assert_not_called()
@@ -1166,19 +1400,31 @@ class TestHandleGuardFailureAgentFails:
     @patch("autoresearch.engine.run_harness")
     @patch("autoresearch.engine.run_guard")
     def test_agent_fail_during_rework_does_not_commit(
-        self, mock_guard, mock_harness, mock_commit, mock_reset,
-        mock_head, mock_create_wt, mock_rm_wt, git_repo, tmp_path
+        self,
+        mock_guard,
+        mock_harness,
+        mock_commit,
+        mock_reset,
+        mock_head,
+        mock_create_wt,
+        mock_rm_wt,
+        git_repo,
+        tmp_path,
     ):
         """If the rework agent returns success=False, no extra commit is made."""
         wt_path = tmp_path / "wt" / "test-marker"
         wt_path.mkdir(parents=True, exist_ok=True)
         from autoresearch.worktree import WorktreeInfo
+
         mock_create_wt.return_value = WorktreeInfo(
             path=wt_path, branch="autoresearch/test", base_commit="abc1234"
         )
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="5 passed", stderr="",
-            metric=5.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="5 passed",
+            stderr="",
+            metric=5.0,
+            log_path=tmp_path / "run.log",
         )
         # Guard always fails
         mock_guard.return_value = GuardResult(passed=False, value=0.0, output="failed")
@@ -1186,6 +1432,7 @@ class TestHandleGuardFailureAgentFails:
         class FailingReworkAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 # First call (initial run) succeeds; rework call fails
@@ -1194,12 +1441,18 @@ class TestHandleGuardFailureAgentFails:
                 return AgentResult(False, "failed rework", 1, "")
 
         marker = _make_marker(
-            guard=Guard(command="pytest -q", extract=None, threshold=None, rework_attempts=1),
+            guard=Guard(
+                command="pytest -q", extract=None, threshold=None, rework_attempts=1
+            ),
             agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"),
         )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            FailingReworkAgent(), worktree_base=tmp_path / "wt",
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            FailingReworkAgent(),
+            worktree_base=tmp_path / "wt",
             cleanup_worktree=False,
         )
         # Only 1 commit for initial change, no rework commit
@@ -1252,7 +1505,9 @@ class TestAgentResultDataclass:
 
     def test_telemetry_field(self):
         tel = object()
-        r = AgentResult(success=False, description="x", exit_code=1, output="err", telemetry=tel)
+        r = AgentResult(
+            success=False, description="x", exit_code=1, output="err", telemetry=tel
+        )
         assert r.telemetry is tel
 
     def test_exit_code_nonzero(self):
@@ -1270,18 +1525,18 @@ class TestAgentResultDataclass:
 
 class TestRunResultDataclass:
     def _make_run_result(self, **overrides):
-        defaults = dict(
-            marker_name="m",
-            experiments=3,
-            kept=1,
-            discarded=1,
-            crashed=1,
-            final_metric=5.0,
-            final_confidence=1.2,
-            final_status="budget_exhausted",
-            branch="autoresearch/m-abc",
-            worktree_path="/tmp/wt/m",
-        )
+        defaults = {
+            "marker_name": "m",
+            "experiments": 3,
+            "kept": 1,
+            "discarded": 1,
+            "crashed": 1,
+            "final_metric": 5.0,
+            "final_confidence": 1.2,
+            "final_status": "budget_exhausted",
+            "branch": "autoresearch/m-abc",
+            "worktree_path": "/tmp/wt/m",
+        }
         defaults.update(overrides)
         return RunResult(**defaults)
 
@@ -1419,8 +1674,15 @@ class TestEscalationStateAdditional:
 class TestFormatResultsAdditional:
     def _make_result(self, **kw):
         from autoresearch.results import ExperimentResult
-        defaults = dict(commit="abc", metric=3.0, guard="pass", status="keep",
-                        confidence="1.0", description="test")
+
+        defaults = {
+            "commit": "abc",
+            "metric": 3.0,
+            "guard": "pass",
+            "status": "keep",
+            "confidence": "1.0",
+            "description": "test",
+        }
         defaults.update(kw)
         return ExperimentResult(**defaults)
 
@@ -1452,31 +1714,51 @@ class TestFormatResultsAdditional:
 
 class TestTargetReachedEdgeCases:
     def test_lower_not_reached_above(self):
-        marker = _make_marker(metric=Metric(
-            command="echo 1", extract="cat",
-            direction=MetricDirection.LOWER, baseline=100, target=50,
-        ))
+        marker = _make_marker(
+            metric=Metric(
+                command="echo 1",
+                extract="cat",
+                direction=MetricDirection.LOWER,
+                baseline=100,
+                target=50,
+            )
+        )
         assert _target_reached(marker, 51) is False
 
     def test_higher_exactly_at_target(self):
-        marker = _make_marker(metric=Metric(
-            command="echo 1", extract="cat",
-            direction=MetricDirection.HIGHER, baseline=3, target=10,
-        ))
+        marker = _make_marker(
+            metric=Metric(
+                command="echo 1",
+                extract="cat",
+                direction=MetricDirection.HIGHER,
+                baseline=3,
+                target=10,
+            )
+        )
         assert _target_reached(marker, 10) is True
 
     def test_lower_exactly_at_target(self):
-        marker = _make_marker(metric=Metric(
-            command="echo 1", extract="cat",
-            direction=MetricDirection.LOWER, baseline=100, target=50,
-        ))
+        marker = _make_marker(
+            metric=Metric(
+                command="echo 1",
+                extract="cat",
+                direction=MetricDirection.LOWER,
+                baseline=100,
+                target=50,
+            )
+        )
         assert _target_reached(marker, 50) is True
 
     def test_zero_target_lower_direction(self):
-        marker = _make_marker(metric=Metric(
-            command="echo 1", extract="cat",
-            direction=MetricDirection.LOWER, baseline=10, target=0,
-        ))
+        marker = _make_marker(
+            metric=Metric(
+                command="echo 1",
+                extract="cat",
+                direction=MetricDirection.LOWER,
+                baseline=10,
+                target=0,
+            )
+        )
         assert _target_reached(marker, 0) is True
         assert _target_reached(marker, 1) is False
 
@@ -1556,7 +1838,7 @@ class TestEscalationStateCrashBehavior:
         esc = EscalationState()
         for _ in range(3):
             esc.on_discard()  # refine
-        esc.on_keep()          # reset
+        esc.on_keep()  # reset
         assert esc.escalation_level == "normal"
         esc.on_discard()
         assert esc.consecutive_failures == 1
@@ -1571,8 +1853,15 @@ class TestEscalationStateCrashBehavior:
 class TestFormatResultsSingleResult:
     def _r(self, **kw):
         from autoresearch.results import ExperimentResult
-        defaults = dict(commit="abc", metric=1.0, guard="pass", status="keep",
-                        confidence="1.0", description="x")
+
+        defaults = {
+            "commit": "abc",
+            "metric": 1.0,
+            "guard": "pass",
+            "status": "keep",
+            "confidence": "1.0",
+            "description": "x",
+        }
         defaults.update(kw)
         return ExperimentResult(**defaults)
 
@@ -1582,8 +1871,14 @@ class TestFormatResultsSingleResult:
         assert "\n" not in out.strip()
 
     def test_tab_separated_fields(self):
-        r = self._r(commit="abc123", metric=7.0, guard="pass", status="keep",
-                    confidence="2.0", description="desc")
+        r = self._r(
+            commit="abc123",
+            metric=7.0,
+            guard="pass",
+            status="keep",
+            confidence="2.0",
+            description="desc",
+        )
         out = _format_results_for_program([r])
         parts = out.split("\t")
         assert parts[0] == "abc123"
@@ -1594,9 +1889,11 @@ class TestFormatResultsSingleResult:
 # AgentError and EngineError identity
 # ---------------------------------------------------------------------------
 
+
 class TestExceptionClasses:
     def test_agent_error_is_exception(self):
         from autoresearch.engine import AgentError
+
         e = AgentError("claude not found")
         assert isinstance(e, Exception)
         assert str(e) == "claude not found"
@@ -1608,6 +1905,7 @@ class TestExceptionClasses:
 
     def test_agent_error_can_be_raised(self):
         from autoresearch.engine import AgentError
+
         with pytest.raises(AgentError, match="binary missing"):
             raise AgentError("binary missing")
 
@@ -1619,6 +1917,7 @@ class TestExceptionClasses:
 # ---------------------------------------------------------------------------
 # EscalationState — more boundary sequences
 # ---------------------------------------------------------------------------
+
 
 class TestEscalationStateBoundary:
     def test_exactly_refine_minus_one_stays_normal(self):
@@ -1680,18 +1979,24 @@ class TestEscalationStateBoundary:
 # _write_telemetry_feedback — truncation to first 3
 # ---------------------------------------------------------------------------
 
+
 class TestWriteTelemetryFeedbackTruncation:
     def test_more_than_3_errors_only_first_3_used(self, tmp_path):
         class FakeTelemetry:
-            errors = ["e1", "e2", "e3", "e4", "e5"]
-            permission_denials = []
+            errors: ClassVar[list] = ["e1", "e2", "e3", "e4", "e5"]
+            permission_denials: ClassVar[list] = []
 
         agent_result = AgentResult(
-            success=True, description="d", exit_code=0, output="",
+            success=True,
+            description="d",
+            exit_code=0,
+            output="",
             telemetry=FakeTelemetry(),
         )
         captured = []
-        with patch("autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)):
+        with patch(
+            "autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)
+        ):
             _write_telemetry_feedback(tmp_path, "m", agent_result)
         # Should have joined first 3 errors only
         assert len(captured) == 1
@@ -1700,15 +2005,20 @@ class TestWriteTelemetryFeedbackTruncation:
 
     def test_more_than_3_denials_only_first_3_used(self, tmp_path):
         class FakeTelemetry:
-            errors = []
-            permission_denials = ["d1", "d2", "d3", "d4"]
+            errors: ClassVar[list] = []
+            permission_denials: ClassVar[list] = ["d1", "d2", "d3", "d4"]
 
         agent_result = AgentResult(
-            success=True, description="d", exit_code=0, output="",
+            success=True,
+            description="d",
+            exit_code=0,
+            output="",
             telemetry=FakeTelemetry(),
         )
         captured = []
-        with patch("autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)):
+        with patch(
+            "autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)
+        ):
             _write_telemetry_feedback(tmp_path, "m", agent_result)
         assert len(captured) == 1
         assert "d4" not in captured[0][3]
@@ -1716,11 +2026,14 @@ class TestWriteTelemetryFeedbackTruncation:
 
     def test_empty_errors_list_no_write(self, tmp_path):
         class FakeTelemetry:
-            errors = []
-            permission_denials = []
+            errors: ClassVar[list] = []
+            permission_denials: ClassVar[list] = []
 
         agent_result = AgentResult(
-            success=True, description="d", exit_code=0, output="",
+            success=True,
+            description="d",
+            exit_code=0,
+            output="",
             telemetry=FakeTelemetry(),
         )
         with patch("autoresearch.engine.append_idea") as mock_idea:
@@ -1731,6 +2044,7 @@ class TestWriteTelemetryFeedbackTruncation:
 # ---------------------------------------------------------------------------
 # _write_discard_idea — additional cases
 # ---------------------------------------------------------------------------
+
 
 class TestWriteDiscardIdeaEdgeCases:
     def test_zero_metric(self, tmp_path):
@@ -1758,12 +2072,18 @@ class TestWriteDiscardIdeaEdgeCases:
 # _format_results_for_program — description with special chars
 # ---------------------------------------------------------------------------
 
+
 class TestFormatResultsSpecialChars:
     def _r(self, description=""):
         from autoresearch.results import ExperimentResult
+
         return ExperimentResult(
-            commit="abc", metric=1.0, guard="pass", status="keep",
-            confidence="1.0", description=description,
+            commit="abc",
+            metric=1.0,
+            guard="pass",
+            status="keep",
+            confidence="1.0",
+            description=description,
         )
 
     def test_description_with_tabs_preserved(self):
@@ -1785,6 +2105,7 @@ class TestFormatResultsSpecialChars:
 # ---------------------------------------------------------------------------
 # _extract_description — more edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestExtractDescriptionEdgeCasesNew:
     def test_all_lines_metadata_returns_default(self):
@@ -1812,6 +2133,7 @@ class TestExtractDescriptionEdgeCasesNew:
 # AgentResult defaults
 # ---------------------------------------------------------------------------
 
+
 class TestAgentResultDefaults:
     def test_telemetry_defaults_to_none(self):
         r = AgentResult(success=True, description="d", exit_code=0, output="")
@@ -1831,9 +2153,12 @@ class TestAgentResultDefaults:
 # EscalationState — search level via pivots_without_progress
 # ---------------------------------------------------------------------------
 
+
 class TestEscalationStateSearchLevel:
     def test_search_triggers_after_two_pivots_without_progress(self):
-        esc = EscalationState(pivot_after=2, search_after_pivots=2, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=2, search_after_pivots=2, halt_after_pivots=10
+        )
         # pivot 1: 2 discards → pivot
         esc.on_discard()
         esc.on_discard()
@@ -1844,14 +2169,18 @@ class TestEscalationStateSearchLevel:
         assert esc.escalation_level in ("pivot", "search")
 
     def test_search_resets_pivots_without_progress(self):
-        esc = EscalationState(pivot_after=2, search_after_pivots=1, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=2, search_after_pivots=1, halt_after_pivots=10
+        )
         esc.on_discard()
         esc.on_discard()  # pivot 1 → search
         assert esc.escalation_level == "search"
         assert esc.pivots_without_progress == 0
 
     def test_search_level_string_value(self):
-        esc = EscalationState(pivot_after=1, search_after_pivots=1, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=1, search_after_pivots=1, halt_after_pivots=10
+        )
         esc.on_discard()
         assert esc.escalation_level == "search"
 
@@ -1863,14 +2192,18 @@ class TestEscalationStateSearchLevel:
         assert esc.halt_after_pivots == 3
 
     def test_pivots_without_progress_increments_per_pivot(self):
-        esc = EscalationState(pivot_after=1, search_after_pivots=3, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=1, search_after_pivots=3, halt_after_pivots=10
+        )
         esc.on_discard()  # pivot 1
         assert esc.total_pivots == 1
         esc.on_discard()  # pivot 2
         assert esc.total_pivots == 2
 
     def test_on_keep_resets_pivots_without_progress(self):
-        esc = EscalationState(pivot_after=2, search_after_pivots=3, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=2, search_after_pivots=3, halt_after_pivots=10
+        )
         esc.on_discard()
         esc.on_discard()  # pivot 1
         esc.on_keep()
@@ -1882,13 +2215,21 @@ class TestEscalationStateSearchLevel:
 # RunResult — additional field tests
 # ---------------------------------------------------------------------------
 
+
 class TestRunResultFieldsFirst:
     def _make(self, **kw):
-        d = dict(
-            marker_name="x", experiments=5, kept=2, discarded=2, crashed=1,
-            final_metric=10.0, final_confidence=1.5, final_status="budget_exhausted",
-            branch="autoresearch/x", worktree_path="/tmp/x",
-        )
+        d = {
+            "marker_name": "x",
+            "experiments": 5,
+            "kept": 2,
+            "discarded": 2,
+            "crashed": 1,
+            "final_metric": 10.0,
+            "final_confidence": 1.5,
+            "final_status": "budget_exhausted",
+            "branch": "autoresearch/x",
+            "worktree_path": "/tmp/x",
+        }
         d.update(kw)
         return RunResult(**d)
 
@@ -1917,20 +2258,26 @@ class TestRunResultFieldsFirst:
 # _write_telemetry_feedback — no telemetry attr
 # ---------------------------------------------------------------------------
 
+
 class TestWriteTelemetryFeedbackNoTelemetry:
     def test_no_telemetry_no_call(self, tmp_path):
-        result = AgentResult(success=True, description="d", exit_code=0, output="", telemetry=None)
+        result = AgentResult(
+            success=True, description="d", exit_code=0, output="", telemetry=None
+        )
         with patch("autoresearch.engine.append_idea") as mock:
             _write_telemetry_feedback(tmp_path, "m", result)
         mock.assert_not_called()
 
     def test_oserror_silenced(self, tmp_path):
         class FakeTelemetry:
-            errors = ["e1"]
-            permission_denials = []
+            errors: ClassVar[list] = ["e1"]
+            permission_denials: ClassVar[list] = []
 
         result = AgentResult(
-            success=True, description="d", exit_code=0, output="",
+            success=True,
+            description="d",
+            exit_code=0,
+            output="",
             telemetry=FakeTelemetry(),
         )
         with patch("autoresearch.engine.append_idea", side_effect=OSError("disk full")):
@@ -1938,15 +2285,20 @@ class TestWriteTelemetryFeedbackNoTelemetry:
 
     def test_permission_denials_written(self, tmp_path):
         class FakeTelemetry:
-            errors = []
-            permission_denials = ["denied1", "denied2"]
+            errors: ClassVar[list] = []
+            permission_denials: ClassVar[list] = ["denied1", "denied2"]
 
         result = AgentResult(
-            success=True, description="d", exit_code=0, output="",
+            success=True,
+            description="d",
+            exit_code=0,
+            output="",
             telemetry=FakeTelemetry(),
         )
         captured = []
-        with patch("autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)):
+        with patch(
+            "autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)
+        ):
             _write_telemetry_feedback(tmp_path, "m", result)
         assert len(captured) == 1
         assert "denied1" in captured[0][3]
@@ -1956,6 +2308,7 @@ class TestWriteTelemetryFeedbackNoTelemetry:
 # _write_discard_idea — OSError silenced
 # ---------------------------------------------------------------------------
 
+
 class TestWriteDiscardIdeaOSError:
     def test_oserror_silenced(self, tmp_path):
         with patch("autoresearch.engine.append_idea", side_effect=OSError("boom")):
@@ -1963,7 +2316,9 @@ class TestWriteDiscardIdeaOSError:
 
     def test_description_in_entry(self, tmp_path):
         captured = []
-        with patch("autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)):
+        with patch(
+            "autoresearch.engine.append_idea", side_effect=lambda *a: captured.append(a)
+        ):
             _write_discard_idea(tmp_path, "m", "great idea", 9.5)
         assert "great idea" in captured[0][3]
         assert "9.5" in captured[0][3]
@@ -1972,6 +2327,7 @@ class TestWriteDiscardIdeaOSError:
 # ---------------------------------------------------------------------------
 # _extract_description — additional patterns
 # ---------------------------------------------------------------------------
+
 
 class TestExtractDescriptionMoreEdgeCases:
     def test_empty_string_returns_default(self):
@@ -2004,6 +2360,7 @@ class TestExtractDescriptionMoreEdgeCases:
 # get_agent_runner — returns ClaudeCodeRunner
 # ---------------------------------------------------------------------------
 
+
 class TestGetAgentRunner:
     def test_returns_claude_code_runner(self):
         marker = _make_marker()
@@ -2020,15 +2377,20 @@ class TestGetAgentRunner:
 # EscalationState — halt level reached via on_crash
 # ---------------------------------------------------------------------------
 
+
 class TestEscalationStateHaltViaCrash:
     def test_crash_can_trigger_pivot(self):
-        esc = EscalationState(pivot_after=2, search_after_pivots=5, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=2, search_after_pivots=5, halt_after_pivots=10
+        )
         esc.on_crash()
         esc.on_crash()
         assert esc.escalation_level == "pivot"
 
     def test_crash_and_discard_combine_toward_pivot(self):
-        esc = EscalationState(pivot_after=3, search_after_pivots=5, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=3, search_after_pivots=5, halt_after_pivots=10
+        )
         esc.on_crash()
         esc.on_discard()
         esc.on_crash()
@@ -2036,7 +2398,7 @@ class TestEscalationStateHaltViaCrash:
 
     def test_halt_via_crash_only(self):
         esc = EscalationState(pivot_after=2, search_after_pivots=5, halt_after_pivots=3)
-        for _ in range(6):   # 3 pivots × 2 crashes each
+        for _ in range(6):  # 3 pivots × 2 crashes each
             esc.on_crash()
             esc.on_crash()
         assert esc.escalation_level == "halt"
@@ -2069,6 +2431,7 @@ class TestEscalationStateHaltViaCrash:
 # EscalationState — on_keep and experiment tracking
 # ---------------------------------------------------------------------------
 
+
 class TestEscalationStateOnKeep:
     def test_on_keep_sets_last_kept_experiment(self):
         esc = EscalationState()
@@ -2092,7 +2455,9 @@ class TestEscalationStateOnKeep:
         assert esc.consecutive_failures == 0
 
     def test_on_keep_does_not_affect_total_pivots(self):
-        esc = EscalationState(pivot_after=1, search_after_pivots=5, halt_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=1, search_after_pivots=5, halt_after_pivots=10
+        )
         esc.on_discard()  # triggers pivot
         assert esc.total_pivots == 1
         esc.on_keep()
@@ -2102,6 +2467,7 @@ class TestEscalationStateOnKeep:
 # ---------------------------------------------------------------------------
 # _parse_budget alias
 # ---------------------------------------------------------------------------
+
 
 class TestParseBudgetAlias:
     def test_parses_minutes(self):
@@ -2121,13 +2487,26 @@ class TestParseBudgetAlias:
 # _format_results_for_program — extra combos
 # ---------------------------------------------------------------------------
 
+
 class TestFormatResultsForProgramExtra:
-    def _make_result(self, commit="abc", metric=5.0, guard="pass", status="keep",
-                     confidence="1.2", description="desc"):
+    def _make_result(
+        self,
+        commit="abc",
+        metric=5.0,
+        guard="pass",
+        status="keep",
+        confidence="1.2",
+        description="desc",
+    ):
         from autoresearch.results import ExperimentResult
+
         return ExperimentResult(
-            commit=commit, metric=metric, guard=guard, status=status,
-            confidence=confidence, description=description,
+            commit=commit,
+            metric=metric,
+            guard=guard,
+            status=status,
+            confidence=confidence,
+            description=description,
         )
 
     def test_three_results_three_lines(self):
@@ -2164,6 +2543,7 @@ class TestFormatResultsForProgramExtra:
 # _reset_to_before_commit — logging on GitError
 # ---------------------------------------------------------------------------
 
+
 class TestResetToBeforeCommitExtra:
     def test_no_error_calls_git_reset(self):
         with patch("autoresearch.engine.git_reset_hard") as mock_reset:
@@ -2172,6 +2552,7 @@ class TestResetToBeforeCommitExtra:
 
     def test_git_error_does_not_raise(self):
         from autoresearch.worktree import GitError
+
         with patch("autoresearch.engine.git_reset_hard", side_effect=GitError("bad")):
             _reset_to_before_commit(Path("/tmp/wt"), "abc1234")  # no raise
 
@@ -2180,9 +2561,11 @@ class TestResetToBeforeCommitExtra:
 # ClaudeCodeRunner — cmd structure
 # ---------------------------------------------------------------------------
 
+
 class TestClaudeCodeRunnerCmdStructure:
     def _make_paths(self, tmp_path):
         from autoresearch.agent_profile import AgentPaths
+
         logs = tmp_path / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         return AgentPaths(
@@ -2211,31 +2594,38 @@ class TestClaudeCodeRunnerCmdStructure:
             patch("autoresearch.engine.subprocess.run", side_effect=fake_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "5m")
         return captured["cmd"]
 
     def test_cmd_starts_with_claude(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert cmd[0] == "claude"
 
     def test_cmd_has_p_flag(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "-p" in cmd
 
     def test_cmd_has_model_flag(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(model="sonnet"))
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--model" in cmd
 
     def test_cmd_has_output_format(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--output-format" in cmd
@@ -2244,6 +2634,7 @@ class TestClaudeCodeRunnerCmdStructure:
 
     def test_cmd_has_add_dir(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--add-dir" in cmd
@@ -2251,6 +2642,7 @@ class TestClaudeCodeRunnerCmdStructure:
     def test_allowed_tools_always_present_from_mutable(self, tmp_path):
         """build_cli_permission_flags always generates allow rules from mutable files."""
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         # Mutable files from _make_marker target always produce --allowedTools
@@ -2260,6 +2652,7 @@ class TestClaudeCodeRunnerCmdStructure:
     def test_disallowed_tools_present_from_immutable(self, tmp_path):
         """build_cli_permission_flags generates deny rules from immutable files."""
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--disallowedTools" in cmd
@@ -2268,6 +2661,7 @@ class TestClaudeCodeRunnerCmdStructure:
 # ---------------------------------------------------------------------------
 # ClaudeCodeRunner — output stored in stream log
 # ---------------------------------------------------------------------------
+
 
 class TestClaudeCodeRunnerStreamLog:
     def test_stream_log_written_when_output_nonempty(self, tmp_path):
@@ -2298,7 +2692,10 @@ class TestClaudeCodeRunnerStreamLog:
             patch("autoresearch.engine.subprocess.run", return_value=mock_proc),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value="ok"),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="ok",
+            ),
         ):
             ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "5m")
 
@@ -2333,7 +2730,10 @@ class TestClaudeCodeRunnerStreamLog:
             patch("autoresearch.engine.subprocess.run", return_value=mock_proc),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "5m")
 
@@ -2344,9 +2744,11 @@ class TestClaudeCodeRunnerStreamLog:
 # ClaudeCodeRunner — allowed_tools flag
 # ---------------------------------------------------------------------------
 
+
 class TestClaudeCodeRunnerAllowedTools:
     def _make_paths(self, tmp_path):
         from autoresearch.agent_profile import AgentPaths
+
         logs = tmp_path / "logs"
         logs.mkdir(parents=True)
         return AgentPaths(
@@ -2364,39 +2766,47 @@ class TestClaudeCodeRunnerAllowedTools:
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = ""
+
         def fake_run(cmd, **kwargs):
             captured["cmd"] = cmd
             return mock_proc
+
         with (
             patch("autoresearch.engine.shutil.which", return_value="/usr/bin/claude"),
             patch("autoresearch.agent_profile.ensure_agent_dir", return_value=paths),
             patch("autoresearch.engine.subprocess.run", side_effect=fake_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "5m")
         return captured["cmd"]
 
     def test_allowed_tools_appended(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(allowed_tools=["Bash", "Read"]))
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--allowedTools" in cmd
         idx = cmd.index("--allowedTools")
-        assert "Bash" in cmd[idx + 1:]
-        assert "Read" in cmd[idx + 1:]
+        assert "Bash" in cmd[idx + 1 :]
+        assert "Read" in cmd[idx + 1 :]
 
     def test_disallowed_tools_appended(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(disallowed_tools=["WebSearch"]))
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--disallowedTools" in cmd
         idx = cmd.index("--disallowedTools")
-        assert "WebSearch" in cmd[idx + 1:]
+        assert "WebSearch" in cmd[idx + 1 :]
 
     def test_effort_flag_appended(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(effort="high"))
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--effort" in cmd
@@ -2405,19 +2815,25 @@ class TestClaudeCodeRunnerAllowedTools:
 
     def test_no_effort_flag_when_not_set(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(effort=""))
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--effort" not in cmd
 
     def test_extra_flags_appended(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig(extra_flags=["--verbose", "--debug"]))
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--verbose" in cmd
         assert "--debug" in cmd
 
     def test_model_from_agent_config(self, tmp_path):
-        marker = _make_marker(agent=AgentConfig(model="opus", max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(
+                model="opus", max_experiments=1, budget_per_experiment="1m"
+            )
+        )
         cmd = self._run_and_capture_cmd(marker, tmp_path)
         assert "--model" in cmd
         idx = cmd.index("--model")
@@ -2428,9 +2844,11 @@ class TestClaudeCodeRunnerAllowedTools:
 # ClaudeCodeRunner — .env file loading
 # ---------------------------------------------------------------------------
 
+
 class TestClaudeCodeRunnerEnvLoading:
     def _make_paths(self, tmp_path, with_env=False, env_content=""):
         from autoresearch.agent_profile import AgentPaths
+
         logs = tmp_path / "logs"
         logs.mkdir(parents=True)
         paths = AgentPaths(
@@ -2451,10 +2869,13 @@ class TestClaudeCodeRunnerEnvLoading:
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = ""
+
         def fake_run(cmd, env=None, **kwargs):
             captured_env.update(env or {})
             return mock_proc
+
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         with (
             patch("autoresearch.engine.shutil.which", return_value="/usr/bin/claude"),
@@ -2462,21 +2883,29 @@ class TestClaudeCodeRunnerEnvLoading:
             patch("autoresearch.engine.subprocess.run", side_effect=fake_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "5m")
         assert captured_env.get("MY_VAR") == "hello"
 
     def test_dot_env_comments_ignored(self, tmp_path):
-        paths = self._make_paths(tmp_path, with_env=True, env_content="# comment\nKEY=val\n")
+        paths = self._make_paths(
+            tmp_path, with_env=True, env_content="# comment\nKEY=val\n"
+        )
         captured_env = {}
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = ""
+
         def fake_run(cmd, env=None, **kwargs):
             captured_env.update(env or {})
             return mock_proc
+
         from autoresearch.marker import AgentConfig
+
         marker = _make_marker(agent=AgentConfig())
         with (
             patch("autoresearch.engine.shutil.which", return_value="/usr/bin/claude"),
@@ -2484,7 +2913,10 @@ class TestClaudeCodeRunnerEnvLoading:
             patch("autoresearch.engine.subprocess.run", side_effect=fake_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=""),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value="",
+            ),
         ):
             ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "5m")
         assert "KEY" in captured_env
@@ -2495,9 +2927,11 @@ class TestClaudeCodeRunnerEnvLoading:
 # ClaudeCodeRunner — timeout returns AgentResult with success=False
 # ---------------------------------------------------------------------------
 
+
 class TestClaudeCodeRunnerTimeout:
     def _make_paths(self, tmp_path):
         from autoresearch.agent_profile import AgentPaths
+
         logs = tmp_path / "logs"
         logs.mkdir(parents=True)
         return AgentPaths(
@@ -2511,9 +2945,12 @@ class TestClaudeCodeRunnerTimeout:
 
     def test_timeout_returns_failed_agent_result(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         paths = self._make_paths(tmp_path)
         marker = _make_marker(agent=AgentConfig())
-        exc = subprocess.TimeoutExpired(cmd=["claude"], timeout=60, output=None, stderr=None)
+        exc = subprocess.TimeoutExpired(
+            cmd=["claude"], timeout=60, output=None, stderr=None
+        )
         with (
             patch("autoresearch.engine.shutil.which", return_value="/usr/bin/claude"),
             patch("autoresearch.agent_profile.ensure_agent_dir", return_value=paths),
@@ -2526,6 +2963,7 @@ class TestClaudeCodeRunnerTimeout:
 
     def test_timeout_with_partial_output(self, tmp_path):
         from autoresearch.marker import AgentConfig
+
         paths = self._make_paths(tmp_path)
         marker = _make_marker(agent=AgentConfig())
         exc = subprocess.TimeoutExpired(
@@ -2543,19 +2981,21 @@ class TestClaudeCodeRunnerTimeout:
     def test_no_claude_on_path_raises_agent_error(self, tmp_path):
         from autoresearch.engine import AgentError
         from autoresearch.marker import AgentConfig
+
         paths = self._make_paths(tmp_path)
         marker = _make_marker(agent=AgentConfig())
         with (
             patch("autoresearch.engine.shutil.which", return_value=None),
             patch("autoresearch.agent_profile.ensure_agent_dir", return_value=paths),
+            pytest.raises(AgentError, match="claude"),
         ):
-            with pytest.raises(AgentError, match="claude"):
-                ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "1m")
+            ClaudeCodeRunner(marker=marker).invoke(tmp_path, "prog", "1m")
 
 
 # ---------------------------------------------------------------------------
 # EscalationState — search level resets pivots_without_progress
 # ---------------------------------------------------------------------------
+
 
 class TestEscalationStateSearchResets:
     def test_search_level_resets_pivots_without_progress(self):
@@ -2612,12 +3052,15 @@ class TestEscalationStateSearchResets:
 # _write_telemetry_feedback — various edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestWriteTelemetryFeedbackEdgeCases:
     def test_telemetry_with_no_errors_no_denials(self, tmp_path):
         mock_tel = MagicMock()
         mock_tel.errors = []
         mock_tel.permission_denials = []
-        result = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=mock_tel)
+        result = AgentResult(
+            success=True, description="ok", exit_code=0, output="", telemetry=mock_tel
+        )
         # Should not raise
         _write_telemetry_feedback(tmp_path, "marker", result)
 
@@ -2625,7 +3068,9 @@ class TestWriteTelemetryFeedbackEdgeCases:
         mock_tel = MagicMock()
         mock_tel.errors = ["Error A", "Error B"]
         mock_tel.permission_denials = []
-        result = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=mock_tel)
+        result = AgentResult(
+            success=True, description="ok", exit_code=0, output="", telemetry=mock_tel
+        )
         _write_telemetry_feedback(tmp_path, "marker", result)
         ideas_path = tmp_path / ".autoresearch" / "marker" / "ideas.md"
         content = ideas_path.read_text()
@@ -2635,21 +3080,27 @@ class TestWriteTelemetryFeedbackEdgeCases:
         mock_tel = MagicMock()
         mock_tel.errors = []
         mock_tel.permission_denials = ["Denied write to src/engine.py"]
-        result = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=mock_tel)
+        result = AgentResult(
+            success=True, description="ok", exit_code=0, output="", telemetry=mock_tel
+        )
         _write_telemetry_feedback(tmp_path, "marker", result)
         ideas_path = tmp_path / ".autoresearch" / "marker" / "ideas.md"
         content = ideas_path.read_text()
         assert "Denied write" in content
 
     def test_telemetry_none_no_error(self, tmp_path):
-        result = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=None)
+        result = AgentResult(
+            success=True, description="ok", exit_code=0, output="", telemetry=None
+        )
         _write_telemetry_feedback(tmp_path, "marker", result)
 
     def test_errors_truncated_to_three(self, tmp_path):
         mock_tel = MagicMock()
         mock_tel.errors = [f"Error {i}" for i in range(10)]
         mock_tel.permission_denials = []
-        result = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=mock_tel)
+        result = AgentResult(
+            success=True, description="ok", exit_code=0, output="", telemetry=mock_tel
+        )
         _write_telemetry_feedback(tmp_path, "marker", result)
         ideas_path = tmp_path / ".autoresearch" / "marker" / "ideas.md"
         content = ideas_path.read_text()
@@ -2662,6 +3113,7 @@ class TestWriteTelemetryFeedbackEdgeCases:
 # _handle_guard_failure — edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestHandleGuardFailure:
     def _make_guard_result(self, passed: bool):
         return GuardResult(passed=passed, output="guard output", value=None)
@@ -2670,15 +3122,22 @@ class TestHandleGuardFailure:
         from autoresearch.engine import _handle_guard_failure
         from autoresearch.marker import Guard
 
-        guard = Guard(command="echo ok", extract=None, threshold=None, rework_attempts=2)
+        guard = Guard(
+            command="echo ok", extract=None, threshold=None, rework_attempts=2
+        )
         marker = _make_marker(guard=guard)
 
-        rework_result = AgentResult(success=True, description="rework", exit_code=0, output="")
+        rework_result = AgentResult(
+            success=True, description="rework", exit_code=0, output=""
+        )
         fake_runner = FakeAgentRunner([rework_result])
 
         with (
             patch("autoresearch.engine.git_commit", return_value="abc123"),
-            patch("autoresearch.engine.run_guard", return_value=self._make_guard_result(True)),
+            patch(
+                "autoresearch.engine.run_guard",
+                return_value=self._make_guard_result(True),
+            ),
             patch("autoresearch.engine._parse_budget", return_value=60),
         ):
             result = _handle_guard_failure(
@@ -2690,10 +3149,14 @@ class TestHandleGuardFailure:
         from autoresearch.engine import _handle_guard_failure
         from autoresearch.marker import Guard
 
-        guard = Guard(command="echo ok", extract=None, threshold=None, rework_attempts=1)
+        guard = Guard(
+            command="echo ok", extract=None, threshold=None, rework_attempts=1
+        )
         marker = _make_marker(guard=guard)
 
-        rework_result = AgentResult(success=False, description="fail", exit_code=1, output="")
+        rework_result = AgentResult(
+            success=False, description="fail", exit_code=1, output=""
+        )
         fake_runner = FakeAgentRunner([rework_result])
 
         result = _handle_guard_failure(
@@ -2705,15 +3168,22 @@ class TestHandleGuardFailure:
         from autoresearch.engine import _handle_guard_failure
         from autoresearch.marker import Guard
 
-        guard = Guard(command="echo ok", extract=None, threshold=None, rework_attempts=2)
+        guard = Guard(
+            command="echo ok", extract=None, threshold=None, rework_attempts=2
+        )
         marker = _make_marker(guard=guard)
 
-        rework_result = AgentResult(success=True, description="rework", exit_code=0, output="")
+        rework_result = AgentResult(
+            success=True, description="rework", exit_code=0, output=""
+        )
         fake_runner = FakeAgentRunner([rework_result, rework_result])
 
         with (
             patch("autoresearch.engine.git_commit", return_value="abc123"),
-            patch("autoresearch.engine.run_guard", return_value=self._make_guard_result(False)),
+            patch(
+                "autoresearch.engine.run_guard",
+                return_value=self._make_guard_result(False),
+            ),
             patch("autoresearch.engine._parse_budget", return_value=60),
         ):
             result = _handle_guard_failure(
@@ -2725,6 +3195,7 @@ class TestHandleGuardFailure:
 # ---------------------------------------------------------------------------
 # RunResult — worktree_path field
 # ---------------------------------------------------------------------------
+
 
 class TestRunResultWorktreePath:
     def test_worktree_path_in_fields(self):
@@ -2770,22 +3241,27 @@ class TestRunResultWorktreePath:
 # AgentError / EngineError — subclass checks
 # ---------------------------------------------------------------------------
 
+
 class TestErrorClassHierarchy:
     def test_agent_error_is_exception(self):
         from autoresearch.engine import AgentError
+
         assert issubclass(AgentError, Exception)
 
     def test_engine_error_is_exception(self):
         from autoresearch.engine import EngineError
+
         assert issubclass(EngineError, Exception)
 
     def test_agent_error_message(self):
         from autoresearch.engine import AgentError
+
         e = AgentError("something broke")
         assert "something broke" in str(e)
 
     def test_engine_error_message(self):
         from autoresearch.engine import EngineError
+
         e = EngineError("bad state")
         assert "bad state" in str(e)
 
@@ -2793,6 +3269,7 @@ class TestErrorClassHierarchy:
 # ---------------------------------------------------------------------------
 # _target_reached — lower direction
 # ---------------------------------------------------------------------------
+
 
 class TestTargetReachedLowerDirection:
     def test_lower_target_reached_when_equal(self):
@@ -2848,6 +3325,7 @@ class TestTargetReachedLowerDirection:
 # EscalationState — precise boundary conditions
 # ---------------------------------------------------------------------------
 
+
 class TestEscalationStatePreciseBoundaries:
     def test_exactly_refine_after_failures_triggers_refine(self):
         esc = EscalationState(refine_after=3, pivot_after=5)
@@ -2870,13 +3348,17 @@ class TestEscalationStatePreciseBoundaries:
         assert esc.total_pivots == 1
 
     def test_pivot_escalation_level_set_on_first_pivot(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=4)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=4
+        )
         for _ in range(5):
             esc.on_discard()
         assert esc.escalation_level == "pivot"
 
     def test_on_keep_resets_pivots_without_progress(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=4)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=4
+        )
         for _ in range(5):
             esc.on_discard()
         assert esc.pivots_without_progress == 1
@@ -2892,19 +3374,25 @@ class TestEscalationStatePreciseBoundaries:
         assert esc.total_pivots == 1
 
     def test_two_pivots_without_keep_triggers_search(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=4)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=4
+        )
         for _ in range(10):
             esc.on_discard()
         assert esc.escalation_level == "search"
 
     def test_search_resets_pivots_without_progress(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=4)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=4
+        )
         for _ in range(10):
             esc.on_discard()
         assert esc.pivots_without_progress == 0
 
     def test_halt_after_three_total_pivots(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=3)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=3
+        )
         for _ in range(15):
             esc.on_discard()
         assert esc.escalation_level == "halt"
@@ -2927,6 +3415,7 @@ class TestEscalationStatePreciseBoundaries:
 # ---------------------------------------------------------------------------
 # _extract_description — more prefix patterns
 # ---------------------------------------------------------------------------
+
 
 class TestExtractDescriptionPrefixPatterns:
     def test_equals_divider_skipped(self):
@@ -2966,16 +3455,21 @@ class TestExtractDescriptionPrefixPatterns:
 # _write_discard_idea — ValueError silenced
 # ---------------------------------------------------------------------------
 
+
 class TestWriteDiscardIdeaValueError:
     def test_value_error_silenced(self, tmp_path):
-        with patch("autoresearch.engine.append_idea", side_effect=ValueError("bad section")):
+        with patch(
+            "autoresearch.engine.append_idea", side_effect=ValueError("bad section")
+        ):
             # Should not raise
             _write_discard_idea(tmp_path, "marker", "some idea", 3.5)
 
     def test_description_and_metric_in_call(self, tmp_path):
         calls = []
+
         def fake_append(path, name, section, entry):
             calls.append(entry)
+
         with patch("autoresearch.engine.append_idea", fake_append):
             _write_discard_idea(tmp_path, "marker", "my description", 7.2)
         assert len(calls) == 1
@@ -2987,6 +3481,7 @@ class TestWriteDiscardIdeaValueError:
 # AgentResult — default telemetry is None
 # ---------------------------------------------------------------------------
 
+
 class TestAgentResultTelemetryDefault:
     def test_default_telemetry_is_none(self):
         r = AgentResult(success=True, description="ok", exit_code=0, output="")
@@ -2994,11 +3489,15 @@ class TestAgentResultTelemetryDefault:
 
     def test_telemetry_can_be_set(self):
         mock_tel = MagicMock()
-        r = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=mock_tel)
+        r = AgentResult(
+            success=True, description="ok", exit_code=0, output="", telemetry=mock_tel
+        )
         assert r.telemetry is mock_tel
 
     def test_failed_result_has_output(self):
-        r = AgentResult(success=False, description="fail", exit_code=1, output="some error text")
+        r = AgentResult(
+            success=False, description="fail", exit_code=1, output="some error text"
+        )
         assert r.output == "some error text"
         assert r.success is False
 
@@ -3007,13 +3506,22 @@ class TestAgentResultTelemetryDefault:
 # _write_telemetry_feedback — telemetry has no relevant attributes
 # ---------------------------------------------------------------------------
 
+
 class TestWriteTelemetryFeedbackNoAttrs:
     def test_telemetry_without_errors_attr_no_crash(self, tmp_path):
         # Telemetry object with no errors or permission_denials attributes
         class MinimalTelemetry:
             pass
-        result = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=MinimalTelemetry())
+
+        result = AgentResult(
+            success=True,
+            description="ok",
+            exit_code=0,
+            output="",
+            telemetry=MinimalTelemetry(),
+        )
         from autoresearch.engine import _write_telemetry_feedback
+
         # Should not raise
         _write_telemetry_feedback(tmp_path, "marker", result)
 
@@ -3021,8 +3529,11 @@ class TestWriteTelemetryFeedbackNoAttrs:
         mock_tel = MagicMock()
         mock_tel.errors = []
         mock_tel.permission_denials = []
-        result = AgentResult(success=True, description="ok", exit_code=0, output="", telemetry=mock_tel)
+        result = AgentResult(
+            success=True, description="ok", exit_code=0, output="", telemetry=mock_tel
+        )
         from autoresearch.engine import _write_telemetry_feedback
+
         ideas_path = tmp_path / ".autoresearch" / "marker" / "ideas.md"
         _write_telemetry_feedback(tmp_path, "marker", result)
         assert not ideas_path.exists()
@@ -3032,9 +3543,11 @@ class TestWriteTelemetryFeedbackNoAttrs:
 # ClaudeCodeRunner — no default CLAUDE.md present
 # ---------------------------------------------------------------------------
 
+
 class TestClaudeCodeRunnerNoDefaultClaudeMd:
     def _make_paths(self, tmp_path):
         from autoresearch.agent_profile import AgentPaths
+
         logs = tmp_path / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         return AgentPaths(
@@ -3061,16 +3574,23 @@ class TestClaudeCodeRunnerNoDefaultClaudeMd:
 
         with (
             patch("autoresearch.engine.shutil.which", return_value="/usr/bin/claude"),
-            patch("autoresearch.agent_profile.ensure_agent_dir", return_value=fake_paths),
+            patch(
+                "autoresearch.agent_profile.ensure_agent_dir", return_value=fake_paths
+            ),
             patch("autoresearch.engine.subprocess.run", side_effect=fake_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=None),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value=None,
+            ),
         ):
             # No CLAUDE.md in tmp_path
             no_claude_md_dir = tmp_path / "no_claude_md"
             no_claude_md_dir.mkdir()
-            with patch("autoresearch.agent_profile.DEFAULT_AGENT_DIR", no_claude_md_dir):
+            with patch(
+                "autoresearch.agent_profile.DEFAULT_AGENT_DIR", no_claude_md_dir
+            ):
                 runner.invoke(tmp_path, "test program", "5m")
         assert "--append-system-prompt-file" not in captured["cmd"]
 
@@ -3095,14 +3615,19 @@ class TestClaudeCodeRunnerNoDefaultClaudeMd:
 
         with (
             patch("autoresearch.engine.shutil.which", return_value="/usr/bin/claude"),
-            patch("autoresearch.agent_profile.ensure_agent_dir", return_value=fake_paths),
+            patch(
+                "autoresearch.agent_profile.ensure_agent_dir", return_value=fake_paths
+            ),
             patch("autoresearch.engine.subprocess.run", side_effect=fake_run),
             patch("autoresearch.telemetry.parse_stream_json", return_value=None),
             patch("autoresearch.telemetry.save_telemetry_report"),
-            patch("autoresearch.telemetry.extract_description_from_telemetry", return_value=None),
+            patch(
+                "autoresearch.telemetry.extract_description_from_telemetry",
+                return_value=None,
+            ),
+            patch("autoresearch.agent_profile.DEFAULT_AGENT_DIR", claude_dir),
         ):
-            with patch("autoresearch.agent_profile.DEFAULT_AGENT_DIR", claude_dir):
-                runner_obj.invoke(tmp_path, "test program", "5m")
+            runner_obj.invoke(tmp_path, "test program", "5m")
         assert "--append-system-prompt-file" in captured["cmd"]
 
 
@@ -3110,16 +3635,28 @@ class TestClaudeCodeRunnerNoDefaultClaudeMd:
 # run_marker — cleanup_worktree=True with GitError
 # ---------------------------------------------------------------------------
 
+
 class TestRunMarkerCleanupGitError:
     def test_cleanup_worktree_git_error_logged_not_raised(self, git_repo, tmp_path):
         from autoresearch.worktree import GitError
+
         # Agent fails -> discard path; cleanup_worktree=True but remove raises GitError
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
         runner = FakeAgentRunner([AgentResult(True, "no-op", 0, "")])
-        with patch("autoresearch.engine.remove_worktree", side_effect=GitError("cleanup failed")):
+        with patch(
+            "autoresearch.engine.remove_worktree",
+            side_effect=GitError("cleanup failed"),
+        ):
             result = run_marker(
-                git_repo, marker, _make_state(), _make_tracked(),
-                runner, worktree_base=tmp_path / "wt", cleanup_worktree=True,
+                git_repo,
+                marker,
+                _make_state(),
+                _make_tracked(),
+                runner,
+                worktree_base=tmp_path / "wt",
+                cleanup_worktree=True,
             )
         assert result is not None
 
@@ -3128,35 +3665,54 @@ class TestRunMarkerCleanupGitError:
 # run_marker — final_confidence None when no kept experiments
 # ---------------------------------------------------------------------------
 
+
 class TestRunMarkerFinalConfidence:
     def test_final_confidence_none_when_no_kept(self, git_repo, tmp_path):
         runner = FakeAgentRunner([AgentResult(True, "no-op", 0, "")])
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            runner, worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            runner,
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.kept == 0
 
     @patch("autoresearch.engine.run_harness")
     def test_final_confidence_set_when_kept(self, mock_harness, git_repo, tmp_path):
         mock_harness.return_value = HarnessResult(
-            exit_code=0, stdout="10 passed", stderr="",
-            metric=10.0, log_path=tmp_path / "run.log",
+            exit_code=0,
+            stdout="10 passed",
+            stderr="",
+            metric=10.0,
+            log_path=tmp_path / "run.log",
         )
 
         class WritingAgent(AgentRunner):
             def __init__(self):
                 self.call_count = 0
+
             def invoke(self, wt, prog, budget):
                 self.call_count += 1
                 (wt / "src" / "main.py").write_text(f"x = {self.call_count + 100}\n")
                 return AgentResult(True, "big improvement", 0, "")
 
-        marker = _make_marker(agent=AgentConfig(max_experiments=1, budget_per_experiment="1m"))
+        marker = _make_marker(
+            agent=AgentConfig(max_experiments=1, budget_per_experiment="1m")
+        )
         result = run_marker(
-            git_repo, marker, _make_state(), _make_tracked(),
-            WritingAgent(), worktree_base=tmp_path / "wt", cleanup_worktree=False,
+            git_repo,
+            marker,
+            _make_state(),
+            _make_tracked(),
+            WritingAgent(),
+            worktree_base=tmp_path / "wt",
+            cleanup_worktree=False,
         )
         assert result.kept >= 1
 
@@ -3164,6 +3720,7 @@ class TestRunMarkerFinalConfidence:
 # ---------------------------------------------------------------------------
 # _handle_guard_failure — zero attempts
 # ---------------------------------------------------------------------------
+
 
 class TestHandleGuardFailureZeroAttempts:
     def test_zero_attempts_returns_false(self, tmp_path):
@@ -3182,9 +3739,12 @@ class TestHandleGuardFailureZeroAttempts:
 # EscalationState — total_pivots not reset by on_keep
 # ---------------------------------------------------------------------------
 
+
 class TestEscalationStateTotalPivotsPreserved:
     def test_total_pivots_preserved_after_keep(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=4)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=4
+        )
         for _ in range(5):
             esc.on_discard()
         assert esc.total_pivots == 1
@@ -3192,7 +3752,9 @@ class TestEscalationStateTotalPivotsPreserved:
         assert esc.total_pivots == 1  # NOT reset
 
     def test_total_pivots_accumulates(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=4)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=3, halt_after_pivots=4
+        )
         for _ in range(5):
             esc.on_discard()
         esc.on_keep()
@@ -3209,12 +3771,24 @@ class TestEscalationStateTotalPivotsPreserved:
 class TestParseStreamJsonBlankLineInMiddle:
     def test_blank_line_between_events_skipped(self):
         import json as _json
+
         from autoresearch.telemetry import parse_stream_json
 
-        e1 = _json.dumps({"type": "system", "subtype": "init", "session_id": "abc123", "tools": []})
-        e2 = _json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0.002,
-                          "duration_ms": 500, "duration_api_ms": 400, "num_turns": 1,
-                          "stop_reason": "end_turn", "permission_denials": []})
+        e1 = _json.dumps(
+            {"type": "system", "subtype": "init", "session_id": "abc123", "tools": []}
+        )
+        e2 = _json.dumps(
+            {
+                "type": "result",
+                "is_error": False,
+                "total_cost_usd": 0.002,
+                "duration_ms": 500,
+                "duration_api_ms": 400,
+                "num_turns": 1,
+                "stop_reason": "end_turn",
+                "permission_denials": [],
+            }
+        )
         output = e1 + "\n\n\n" + e2
         report = parse_stream_json(output)
         assert report.session_id == "abc123"
@@ -3222,11 +3796,21 @@ class TestParseStreamJsonBlankLineInMiddle:
 
     def test_whitespace_only_line_between_events_skipped(self):
         import json as _json
+
         from autoresearch.telemetry import parse_stream_json
 
-        e1 = _json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0.001,
-                          "duration_ms": 100, "duration_api_ms": 90, "num_turns": 1,
-                          "stop_reason": "end_turn", "permission_denials": []})
+        e1 = _json.dumps(
+            {
+                "type": "result",
+                "is_error": False,
+                "total_cost_usd": 0.001,
+                "duration_ms": 100,
+                "duration_api_ms": 90,
+                "num_turns": 1,
+                "stop_reason": "end_turn",
+                "permission_denials": [],
+            }
+        )
         output = "   \n" + e1
         report = parse_stream_json(output)
         assert report.total_cost_usd == 0.001
@@ -3239,21 +3823,30 @@ class TestParseStreamJsonBlankLineInMiddle:
 
 class TestExtractDescriptionAllShortLines:
     def test_returns_none_when_all_lines_too_short(self):
-        from autoresearch.telemetry import TelemetryReport, extract_description_from_telemetry
+        from autoresearch.telemetry import (
+            TelemetryReport,
+            extract_description_from_telemetry,
+        )
 
         report = TelemetryReport(result_text="ab\nxy\n  z ")
         result = extract_description_from_telemetry(report)
         assert result is None
 
     def test_returns_none_for_single_char_lines(self):
-        from autoresearch.telemetry import TelemetryReport, extract_description_from_telemetry
+        from autoresearch.telemetry import (
+            TelemetryReport,
+            extract_description_from_telemetry,
+        )
 
         report = TelemetryReport(result_text="a\nb\nc")
         result = extract_description_from_telemetry(report)
         assert result is None
 
     def test_whitespace_only_after_strip_returns_none(self):
-        from autoresearch.telemetry import TelemetryReport, extract_description_from_telemetry
+        from autoresearch.telemetry import (
+            TelemetryReport,
+            extract_description_from_telemetry,
+        )
 
         report = TelemetryReport(result_text="\n  \n\t\n")
         result = extract_description_from_telemetry(report)
@@ -3269,16 +3862,20 @@ class TestExtractMetricTimeout:
     def test_timeout_returns_none(self):
         from autoresearch.metrics import _extract_metric
 
-        with patch("autoresearch.metrics.subprocess.run",
-                   side_effect=subprocess.TimeoutExpired(cmd=["bash"], timeout=10)):
+        with patch(
+            "autoresearch.metrics.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd=["bash"], timeout=10),
+        ):
             result = _extract_metric("some output", "grep -oP '\\d+'")
         assert result is None
 
     def test_value_error_in_extraction_returns_none(self):
         from autoresearch.metrics import _extract_metric
 
-        with patch("autoresearch.metrics.subprocess.run",
-                   side_effect=ValueError("conversion failed")):
+        with patch(
+            "autoresearch.metrics.subprocess.run",
+            side_effect=ValueError("conversion failed"),
+        ):
             result = _extract_metric("output", "extract")
         assert result is None
 
@@ -3378,11 +3975,15 @@ class TestAgentResultFields:
 
     def test_telemetry_stored(self):
         obj = object()
-        r = AgentResult(success=True, description="x", exit_code=0, output="", telemetry=obj)
+        r = AgentResult(
+            success=True, description="x", exit_code=0, output="", telemetry=obj
+        )
         assert r.telemetry is obj
 
     def test_negative_exit_code_for_timeout(self):
-        r = AgentResult(success=False, description="timeout", exit_code=-1, output="TIMEOUT")
+        r = AgentResult(
+            success=False, description="timeout", exit_code=-1, output="TIMEOUT"
+        )
         assert r.exit_code == -1
 
 
@@ -3394,9 +3995,14 @@ class TestAgentResultFields:
 class TestFormatResultsForProgramExtended:
     def test_result_with_keep_status(self):
         from autoresearch.results import ExperimentResult
+
         r = ExperimentResult(
-            commit="abc1234", metric=95.0, guard="pass",
-            status="keep", confidence="0.8", description="added tests"
+            commit="abc1234",
+            metric=95.0,
+            guard="pass",
+            status="keep",
+            confidence="0.8",
+            description="added tests",
         )
         out = _format_results_for_program([r])
         assert "keep" in out
@@ -3405,9 +4011,14 @@ class TestFormatResultsForProgramExtended:
 
     def test_result_with_crash_status(self):
         from autoresearch.results import ExperimentResult
+
         r = ExperimentResult(
-            commit="def5678", metric=0, guard="--",
-            status="crash", confidence="--", description="broken"
+            commit="def5678",
+            metric=0,
+            guard="--",
+            status="crash",
+            confidence="--",
+            description="broken",
         )
         out = _format_results_for_program([r])
         assert "crash" in out
@@ -3415,10 +4026,32 @@ class TestFormatResultsForProgramExtended:
 
     def test_three_results_three_lines(self):
         from autoresearch.results import ExperimentResult
+
         results = [
-            ExperimentResult(commit="a1", metric=10, guard="--", status="discard", confidence="--", description="d1"),
-            ExperimentResult(commit="a2", metric=20, guard="pass", status="keep", confidence="0.5", description="d2"),
-            ExperimentResult(commit="a3", metric=0, guard="--", status="crash", confidence="--", description="d3"),
+            ExperimentResult(
+                commit="a1",
+                metric=10,
+                guard="--",
+                status="discard",
+                confidence="--",
+                description="d1",
+            ),
+            ExperimentResult(
+                commit="a2",
+                metric=20,
+                guard="pass",
+                status="keep",
+                confidence="0.5",
+                description="d2",
+            ),
+            ExperimentResult(
+                commit="a3",
+                metric=0,
+                guard="--",
+                status="crash",
+                confidence="--",
+                description="d3",
+            ),
         ]
         out = _format_results_for_program(results)
         lines = out.strip().splitlines()
@@ -3426,7 +4059,15 @@ class TestFormatResultsForProgramExtended:
 
     def test_tab_delimited(self):
         from autoresearch.results import ExperimentResult
-        r = ExperimentResult(commit="abc", metric=5.0, guard="pass", status="keep", confidence="0.9", description="desc")
+
+        r = ExperimentResult(
+            commit="abc",
+            metric=5.0,
+            guard="pass",
+            status="keep",
+            confidence="0.9",
+            description="desc",
+        )
         out = _format_results_for_program([r])
         parts = out.split("\t")
         assert len(parts) == 6
@@ -3480,6 +4121,7 @@ class TestRunResultFields:
 class TestTargetReachedBoundaries:
     def test_higher_exactly_at_target(self):
         from autoresearch.engine import _target_reached
+
         marker = MagicMock()
         marker.metric.target = 100.0
         marker.metric.direction.value = "higher"
@@ -3487,6 +4129,7 @@ class TestTargetReachedBoundaries:
 
     def test_higher_one_below_target(self):
         from autoresearch.engine import _target_reached
+
         marker = MagicMock()
         marker.metric.target = 100.0
         marker.metric.direction.value = "higher"
@@ -3494,6 +4137,7 @@ class TestTargetReachedBoundaries:
 
     def test_lower_exactly_at_target(self):
         from autoresearch.engine import _target_reached
+
         marker = MagicMock()
         marker.metric.target = 0.5
         marker.metric.direction.value = "lower"
@@ -3501,6 +4145,7 @@ class TestTargetReachedBoundaries:
 
     def test_lower_above_target(self):
         from autoresearch.engine import _target_reached
+
         marker = MagicMock()
         marker.metric.target = 0.5
         marker.metric.direction.value = "lower"
@@ -3508,12 +4153,11 @@ class TestTargetReachedBoundaries:
 
     def test_lower_below_target(self):
         from autoresearch.engine import _target_reached
+
         marker = MagicMock()
         marker.metric.target = 0.5
         marker.metric.direction.value = "lower"
         assert _target_reached(marker, 0.4) is True
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -3575,7 +4219,9 @@ class TestEscalationStateSequences:
         assert esc.pivots_without_progress == 0
 
     def test_halt_after_pivots(self):
-        esc = EscalationState(pivot_after=2, halt_after_pivots=2, search_after_pivots=10)
+        esc = EscalationState(
+            pivot_after=2, halt_after_pivots=2, search_after_pivots=10
+        )
         for _ in range(4):  # 2 pivots
             esc.on_discard()
         assert esc.escalation_level == "halt"
@@ -3604,20 +4250,44 @@ class TestFormatResultsEdgeCases:
 
     def test_single_item_no_newline_at_end(self):
         from autoresearch.results import ExperimentResult
-        r = ExperimentResult(commit="abc", metric=5.0, guard="pass", status="keep", confidence="0.9", description="d")
+
+        r = ExperimentResult(
+            commit="abc",
+            metric=5.0,
+            guard="pass",
+            status="keep",
+            confidence="0.9",
+            description="d",
+        )
         out = _format_results_for_program([r])
         assert not out.endswith("\n")
 
     def test_description_preserved(self):
         from autoresearch.results import ExperimentResult
-        r = ExperimentResult(commit="abc", metric=5.0, guard="pass", status="keep", confidence="0.9", description="my desc")
+
+        r = ExperimentResult(
+            commit="abc",
+            metric=5.0,
+            guard="pass",
+            status="keep",
+            confidence="0.9",
+            description="my desc",
+        )
         out = _format_results_for_program([r])
         assert "my desc" in out
 
     def test_multiple_items_count(self):
         from autoresearch.results import ExperimentResult
+
         results = [
-            ExperimentResult(commit=f"c{i}", metric=float(i), guard="--", status="keep", confidence="--", description=f"d{i}")
+            ExperimentResult(
+                commit=f"c{i}",
+                metric=float(i),
+                guard="--",
+                status="keep",
+                confidence="--",
+                description=f"d{i}",
+            )
             for i in range(5)
         ]
         lines = _format_results_for_program(results).splitlines()
@@ -3678,12 +4348,16 @@ class TestAgentResultAdditional:
         assert r.exit_code == 1
 
     def test_output_stored(self):
-        r = AgentResult(success=True, description="d", exit_code=0, output="some output")
+        r = AgentResult(
+            success=True, description="d", exit_code=0, output="some output"
+        )
         assert r.output == "some output"
 
     def test_telemetry_set(self):
         obj = MagicMock()
-        r = AgentResult(success=True, description="d", exit_code=0, output="", telemetry=obj)
+        r = AgentResult(
+            success=True, description="d", exit_code=0, output="", telemetry=obj
+        )
         assert r.telemetry is obj
 
 
@@ -3698,6 +4372,7 @@ class TestWriteDiscardIdeaReal:
 
     def test_writes_to_ideas_file(self, tmp_path):
         from autoresearch.ideas import read_ideas
+
         _write_discard_idea(tmp_path, "test-marker", "try X", 10.0)
         content = read_ideas(tmp_path, "test-marker")
         assert "try X" in content
@@ -3718,25 +4393,33 @@ class TestWriteDiscardIdeaReal:
 
 class TestWriteTelemetryFeedbackAdditional:
     def test_no_telemetry_is_noop(self, tmp_path):
-        ar = AgentResult(success=True, description="d", exit_code=0, output="", telemetry=None)
+        ar = AgentResult(
+            success=True, description="d", exit_code=0, output="", telemetry=None
+        )
         _write_telemetry_feedback(tmp_path, "test-marker", ar)  # should not raise
 
     def test_errors_get_appended(self, tmp_path):
         from autoresearch.ideas import read_ideas
+
         telemetry = MagicMock()
         telemetry.errors = ["err1", "err2"]
         telemetry.permission_denials = []
-        ar = AgentResult(success=False, description="d", exit_code=1, output="", telemetry=telemetry)
+        ar = AgentResult(
+            success=False, description="d", exit_code=1, output="", telemetry=telemetry
+        )
         _write_telemetry_feedback(tmp_path, "test-marker", ar)
         content = read_ideas(tmp_path, "test-marker")
         assert "err1" in content
 
     def test_permission_denials_appended(self, tmp_path):
         from autoresearch.ideas import read_ideas
+
         telemetry = MagicMock()
         telemetry.errors = []
         telemetry.permission_denials = ["denied /some/path"]
-        ar = AgentResult(success=False, description="d", exit_code=1, output="", telemetry=telemetry)
+        ar = AgentResult(
+            success=False, description="d", exit_code=1, output="", telemetry=telemetry
+        )
         _write_telemetry_feedback(tmp_path, "test-marker", ar)
         content = read_ideas(tmp_path, "test-marker")
         assert "denied" in content
@@ -3745,7 +4428,9 @@ class TestWriteTelemetryFeedbackAdditional:
         telemetry = MagicMock()
         telemetry.errors = ["err"]
         telemetry.permission_denials = []
-        ar = AgentResult(success=False, description="d", exit_code=1, output="", telemetry=telemetry)
+        ar = AgentResult(
+            success=False, description="d", exit_code=1, output="", telemetry=telemetry
+        )
         with patch("autoresearch.engine.append_idea", side_effect=OSError("fail")):
             _write_telemetry_feedback(tmp_path, "test-marker", ar)  # should not raise
 
@@ -3754,9 +4439,13 @@ class TestWriteTelemetryFeedbackAdditional:
 # _extract_description — large batch of new patterns
 # ---------------------------------------------------------------------------
 
+
 class TestExtractDescriptionNewPatterns:
     def test_normal_sentence(self):
-        assert _extract_description("Some improvement was made") == "Some improvement was made"
+        assert (
+            _extract_description("Some improvement was made")
+            == "Some improvement was made"
+        )
 
     def test_trailing_newline(self):
         assert _extract_description("Result text\n") == "Result text"
@@ -3818,13 +4507,20 @@ class TestExtractDescriptionNewPatterns:
 # _target_reached — comprehensive direction scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestTargetReachedComprehensive:
     def _marker(self, direction, baseline, target):
         return Marker(
-            name="x", description="",
+            name="x",
+            description="",
             target=Target(mutable=["a.py"]),
-            metric=Metric(command="c", extract="e",
-                          direction=direction, baseline=baseline, target=target),
+            metric=Metric(
+                command="c",
+                extract="e",
+                direction=direction,
+                baseline=baseline,
+                target=target,
+            ),
             agent=AgentConfig(),
         )
 
@@ -3878,12 +4574,27 @@ class TestTargetReachedComprehensive:
 # _format_results_for_program — more scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestFormatResultsExtended:
-    def _r(self, commit="abc", metric=1.0, guard="--", status="keep",
-           confidence="--", description="desc"):
+    def _r(
+        self,
+        commit="abc",
+        metric=1.0,
+        guard="--",
+        status="keep",
+        confidence="--",
+        description="desc",
+    ):
         from autoresearch.results import ExperimentResult
-        return ExperimentResult(commit=commit, metric=metric, guard=guard,
-                                status=status, confidence=confidence, description=description)
+
+        return ExperimentResult(
+            commit=commit,
+            metric=metric,
+            guard=guard,
+            status=status,
+            confidence=confidence,
+            description=description,
+        )
 
     def test_single_keep(self):
         result = _format_results_for_program([self._r()])
@@ -3930,6 +4641,7 @@ class TestFormatResultsExtended:
 # ---------------------------------------------------------------------------
 # EscalationState — more boundary and sequence tests
 # ---------------------------------------------------------------------------
+
 
 class TestEscalationStatePreciseBoundaries2:
     def test_refine_level_at_exactly_refine_after(self):
@@ -3992,8 +4704,9 @@ class TestEscalationStatePreciseBoundaries2:
         assert esc.escalation_level == "normal"
 
     def test_search_level_after_search_after_pivots(self):
-        esc = EscalationState(refine_after=1, pivot_after=2,
-                               search_after_pivots=1, halt_after_pivots=10)
+        esc = EscalationState(
+            refine_after=1, pivot_after=2, search_after_pivots=1, halt_after_pivots=10
+        )
         for _ in range(4):
             esc.on_discard()
         assert esc.escalation_level in ("search", "pivot", "halt")
@@ -4003,13 +4716,21 @@ class TestEscalationStatePreciseBoundaries2:
 # AgentResult / RunResult — additional field combinations
 # ---------------------------------------------------------------------------
 
+
 class TestRunResultAdditional:
     def _make(self, **kw):
-        d = dict(
-            marker_name="x", experiments=5, kept=2, discarded=2, crashed=1,
-            final_metric=10.0, final_confidence=1.5, final_status="budget_exhausted",
-            branch="autoresearch/x", worktree_path="/tmp/x",
-        )
+        d = {
+            "marker_name": "x",
+            "experiments": 5,
+            "kept": 2,
+            "discarded": 2,
+            "crashed": 1,
+            "final_metric": 10.0,
+            "final_confidence": 1.5,
+            "final_status": "budget_exhausted",
+            "branch": "autoresearch/x",
+            "worktree_path": "/tmp/x",
+        }
         d.update(kw)
         return RunResult(**d)
 
@@ -4037,6 +4758,7 @@ class TestRunResultAdditional:
 # ---------------------------------------------------------------------------
 # _extract_description — more edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestExtractDescriptionSpecialInputs:
     def test_only_timestamp_lines(self):
@@ -4103,6 +4825,7 @@ class TestExtractDescriptionSpecialInputs:
 # _target_reached — comprehensive
 # ---------------------------------------------------------------------------
 
+
 class TestTargetReachedAll:
     def _make_marker(self, target, direction="higher"):
         m = MagicMock()
@@ -4162,6 +4885,7 @@ class TestTargetReachedAll:
 # ---------------------------------------------------------------------------
 # EscalationState — corner cases
 # ---------------------------------------------------------------------------
+
 
 class TestEscalationStateCornerCases:
     def test_on_keep_resets_pivots_without_progress(self):
@@ -4242,9 +4966,17 @@ class TestEscalationStateCornerCases:
 # _format_results_for_program — edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestFormatResultsForProgramMore:
-    def _make_result(self, commit="abc", metric=1.0, guard="pass", status="keep",
-                     confidence=1.0, description="desc"):
+    def _make_result(
+        self,
+        commit="abc",
+        metric=1.0,
+        guard="pass",
+        status="keep",
+        confidence=1.0,
+        description="desc",
+    ):
         r = MagicMock()
         r.commit = commit
         r.metric = metric
@@ -4268,8 +5000,14 @@ class TestFormatResultsForProgramMore:
         assert len(lines) == 2
 
     def test_tab_separated_fields(self):
-        r = self._make_result(commit="abc", metric=2.5, guard="pass", status="keep",
-                               confidence=0.8, description="my desc")
+        r = self._make_result(
+            commit="abc",
+            metric=2.5,
+            guard="pass",
+            status="keep",
+            confidence=0.8,
+            description="my desc",
+        )
         out = _format_results_for_program([r])
         parts = out.split("\t")
         assert len(parts) == 6
@@ -4292,9 +5030,16 @@ class TestFormatResultsForProgramMore:
 # AgentResult — field validation
 # ---------------------------------------------------------------------------
 
+
 class TestAgentResultValidation:
     def _make(self, **kw):
-        d = dict(output="ok", exit_code=0, success=True, telemetry=None, description="desc")
+        d = {
+            "output": "ok",
+            "exit_code": 0,
+            "success": True,
+            "telemetry": None,
+            "description": "desc",
+        }
         d.update(kw)
         return AgentResult(**d)
 
@@ -4322,6 +5067,7 @@ class TestAgentResultValidation:
 # ---------------------------------------------------------------------------
 # EscalationState — additional boundary and sequence tests
 # ---------------------------------------------------------------------------
+
 
 class TestEscalationStateOnKeepResets:
     def test_on_keep_resets_consecutive_failures(self):
@@ -4403,13 +5149,17 @@ class TestEscalationStatePivotLevel:
 
 class TestEscalationStateSearchLevel:
     def test_two_pivots_triggers_search(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=10)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=10
+        )
         for _ in range(10):
             esc.on_discard()
         assert esc.escalation_level == "search"
 
     def test_search_resets_pivots_without_progress(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=10)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=10
+        )
         for _ in range(10):
             esc.on_discard()
         assert esc.pivots_without_progress == 0
@@ -4417,13 +5167,17 @@ class TestEscalationStateSearchLevel:
 
 class TestEscalationStateHaltLevel:
     def test_halt_after_enough_pivots(self):
-        esc = EscalationState(refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=3)
+        esc = EscalationState(
+            refine_after=3, pivot_after=5, search_after_pivots=2, halt_after_pivots=3
+        )
         for _ in range(15):
             esc.on_discard()
         assert esc.escalation_level == "halt"
 
     def test_halt_total_pivots_at_threshold(self):
-        esc = EscalationState(refine_after=1, pivot_after=2, search_after_pivots=10, halt_after_pivots=3)
+        esc = EscalationState(
+            refine_after=1, pivot_after=2, search_after_pivots=10, halt_after_pivots=3
+        )
         for _ in range(6):
             esc.on_discard()
         assert esc.total_pivots >= 3
@@ -4490,6 +5244,7 @@ class TestEscalationStateDefaultValues:
 # _target_reached — more cases
 # ---------------------------------------------------------------------------
 
+
 class TestTargetReachedMore:
     def _marker(self, target_value, direction="higher", baseline=0.0):
         return Marker(
@@ -4503,7 +5258,9 @@ class TestTargetReachedMore:
                 baseline=baseline,
                 target=target_value,
             ),
-            agent=AgentConfig(model="sonnet", budget_per_experiment="5m", max_experiments=5),
+            agent=AgentConfig(
+                model="sonnet", budget_per_experiment="5m", max_experiments=5
+            ),
         )
 
     def test_exactly_at_target_higher(self):
@@ -4551,6 +5308,7 @@ class TestTargetReachedMore:
 # _extract_description — more patterns
 # ---------------------------------------------------------------------------
 
+
 class TestExtractDescriptionMoreVariants:
     def test_system_directive_prefix(self):
         # Lines starting with --- are skipped; falls back to "experiment"
@@ -4589,9 +5347,16 @@ class TestExtractDescriptionMoreVariants:
 # AgentResult — comprehensive field tests
 # ---------------------------------------------------------------------------
 
+
 class TestAgentResultComprehensive:
     def test_all_fields_accessible(self):
-        r = AgentResult(success=True, description="ok", exit_code=0, output="out", telemetry={"k": "v"})
+        r = AgentResult(
+            success=True,
+            description="ok",
+            exit_code=0,
+            output="out",
+            telemetry={"k": "v"},
+        )
         assert r.success is True
         assert r.description == "ok"
         assert r.exit_code == 0
@@ -4599,11 +5364,15 @@ class TestAgentResultComprehensive:
         assert r.telemetry == {"k": "v"}
 
     def test_telemetry_can_be_list(self):
-        r = AgentResult(success=True, description="x", exit_code=0, output="", telemetry=[1, 2, 3])
+        r = AgentResult(
+            success=True, description="x", exit_code=0, output="", telemetry=[1, 2, 3]
+        )
         assert r.telemetry == [1, 2, 3]
 
     def test_telemetry_can_be_string(self):
-        r = AgentResult(success=True, description="x", exit_code=0, output="", telemetry="raw")
+        r = AgentResult(
+            success=True, description="x", exit_code=0, output="", telemetry="raw"
+        )
         assert r.telemetry == "raw"
 
     def test_description_empty_string(self):
@@ -4611,7 +5380,9 @@ class TestAgentResultComprehensive:
         assert r.description == ""
 
     def test_exit_code_negative(self):
-        r = AgentResult(success=False, description="timeout", exit_code=-1, output="TIMEOUT")
+        r = AgentResult(
+            success=False, description="timeout", exit_code=-1, output="TIMEOUT"
+        )
         assert r.exit_code == -1
 
     def test_output_very_long(self):
@@ -4624,20 +5395,21 @@ class TestAgentResultComprehensive:
 # RunResult — comprehensive field tests
 # ---------------------------------------------------------------------------
 
+
 class TestRunResultComprehensive:
     def _make(self, **kw):
-        d = dict(
-            marker_name="test",
-            experiments=5,
-            kept=3,
-            discarded=1,
-            crashed=1,
-            final_metric=42.0,
-            final_confidence=0.8,
-            final_status="completed",
-            branch="autoresearch/test",
-            worktree_path="/tmp/wt",
-        )
+        d = {
+            "marker_name": "test",
+            "experiments": 5,
+            "kept": 3,
+            "discarded": 1,
+            "crashed": 1,
+            "final_metric": 42.0,
+            "final_confidence": 0.8,
+            "final_status": "completed",
+            "branch": "autoresearch/test",
+            "worktree_path": "/tmp/wt",
+        }
         d.update(kw)
         return RunResult(**d)
 
@@ -4694,8 +5466,17 @@ class TestRunResultComprehensive:
 # _format_results_for_program — additional coverage
 # ---------------------------------------------------------------------------
 
+
 class TestFormatResultsForProgramAdditional:
-    def _r(self, commit="abc", metric=1.0, guard="pass", status="keep", confidence=0.9, description="d"):
+    def _r(
+        self,
+        commit="abc",
+        metric=1.0,
+        guard="pass",
+        status="keep",
+        confidence=0.9,
+        description="d",
+    ):
         r = MagicMock()
         r.commit = commit
         r.metric = metric
@@ -4872,18 +5653,18 @@ class TestEscalationStateCustomThresholds:
 
 class TestRunResultFields:
     def _make(self, **kwargs):
-        defaults = dict(
-            marker_name="test",
-            experiments=5,
-            kept=3,
-            discarded=2,
-            crashed=0,
-            final_metric=100.0,
-            final_confidence=2.5,
-            final_status="completed",
-            branch="autoresearch/test",
-            worktree_path="/tmp/wt",
-        )
+        defaults = {
+            "marker_name": "test",
+            "experiments": 5,
+            "kept": 3,
+            "discarded": 2,
+            "crashed": 0,
+            "final_metric": 100.0,
+            "final_confidence": 2.5,
+            "final_status": "completed",
+            "branch": "autoresearch/test",
+            "worktree_path": "/tmp/wt",
+        }
         defaults.update(kwargs)
         return RunResult(**defaults)
 
@@ -4955,32 +5736,38 @@ class TestRunResultFields:
 class TestExtractDescriptionB:
     def test_plain_line_returned(self):
         from autoresearch.engine import _extract_description
+
         out = "Added 10 new tests"
         assert _extract_description(out) == "Added 10 new tests"
 
     def test_skips_blank_lines(self):
         from autoresearch.engine import _extract_description
+
         out = "\n\nSome good description here"
         assert _extract_description(out) == "Some good description here"
 
     def test_empty_returns_no_description(self):
         from autoresearch.engine import _extract_description
+
         result = _extract_description("")
         assert isinstance(result, str)
 
     def test_all_blank_returns_default(self):
         from autoresearch.engine import _extract_description
+
         result = _extract_description("   \n   \n   ")
         assert isinstance(result, str)
 
     def test_truncated_at_200_chars(self):
         from autoresearch.engine import _extract_description
+
         long = "x" * 300
         result = _extract_description(long)
         assert len(result) <= 200
 
     def test_multiple_lines_picks_last_valid(self):
         from autoresearch.engine import _extract_description
+
         out = "Short\nThis is a valid line with enough characters to be meaningful"
         result = _extract_description(out)
         assert isinstance(result, str)
@@ -4988,11 +5775,13 @@ class TestExtractDescriptionB:
 
     def test_returns_str_type(self):
         from autoresearch.engine import _extract_description
+
         result = _extract_description("Hello world")
         assert isinstance(result, str)
 
     def test_system_directive_prefix_handled(self):
         from autoresearch.engine import _extract_description
+
         out = "--- System Directive: Added 50 tests to the test suite."
         result = _extract_description(out)
         assert isinstance(result, str)
@@ -5001,82 +5790,102 @@ class TestExtractDescriptionB:
 class TestParseBudgetB:
     def test_2m(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("2m") == 120
 
     def test_5m(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("5m") == 300
 
     def test_10m(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("10m") == 600
 
     def test_1h(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("1h") == 3600
 
     def test_30s(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("30s") == 30
 
     def test_invalid_returns_default(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("xyz") == 600
 
     def test_empty_returns_default(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("") == 600
 
     def test_bare_number(self):
         from autoresearch.engine import _parse_budget
+
         assert _parse_budget("15") == 900
 
 
 class TestTargetReachedB:
     def test_higher_target_met(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(100.0, "higher")
         assert _target_reached(m, 100.0) is True
 
     def test_higher_target_exceeded(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(100.0, "higher")
         assert _target_reached(m, 150.0) is True
 
     def test_higher_target_not_met(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(100.0, "higher")
         assert _target_reached(m, 50.0) is False
 
     def test_lower_target_met(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(50.0, "lower")
         assert _target_reached(m, 50.0) is True
 
     def test_lower_target_exceeded(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(50.0, "lower")
         assert _target_reached(m, 30.0) is True
 
     def test_lower_target_not_met(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(50.0, "lower")
         assert _target_reached(m, 75.0) is False
 
     def test_no_target_returns_false(self):
         from autoresearch.engine import _target_reached
-        from autoresearch.marker import AgentConfig, Marker, Target, Metric
+        from autoresearch.marker import AgentConfig, Marker, Metric, Target
+
         m = Marker(
             name="x",
             target=Target(mutable=["f.py"]),
-            metric=Metric(command="echo 1", extract=r"\d+", direction="higher", baseline=0.0),
-            agent=AgentConfig(model="sonnet", budget_per_experiment="5m", max_experiments=5),
+            metric=Metric(
+                command="echo 1", extract=r"\d+", direction="higher", baseline=0.0
+            ),
+            agent=AgentConfig(
+                model="sonnet", budget_per_experiment="5m", max_experiments=5
+            ),
         )
         assert _target_reached(m, 999.0) is False
 
 
 def _make_marker_with_target(target_val: float, direction: str):
-    from autoresearch.marker import AgentConfig, Marker, Target, Metric
+    from autoresearch.marker import AgentConfig, Marker, Metric, Target
+
     return Marker(
         name="x",
         target=Target(mutable=["f.py"]),
@@ -5087,21 +5896,24 @@ def _make_marker_with_target(target_val: float, direction: str):
             baseline=0.0,
             target=target_val,
         ),
-        agent=AgentConfig(model="sonnet", budget_per_experiment="5m", max_experiments=5),
+        agent=AgentConfig(
+            model="sonnet", budget_per_experiment="5m", max_experiments=5
+        ),
     )
 
 
 class TestFormatResultsB:
     def _r(self, **kwargs):
         from autoresearch.results import ExperimentResult
-        defaults = dict(
-            commit="abc123",
-            metric=100.0,
-            guard="--",
-            status="keep",
-            confidence="HIGH",
-            description="Test run",
-        )
+
+        defaults = {
+            "commit": "abc123",
+            "metric": 100.0,
+            "guard": "--",
+            "status": "keep",
+            "confidence": "HIGH",
+            "description": "Test run",
+        }
         defaults.update(kwargs)
         return ExperimentResult(**defaults)
 
@@ -5158,6 +5970,7 @@ class TestFormatResultsB:
 # ---------------------------------------------------------------------------
 # NEW BATCH: EscalationState extended coverage
 # ---------------------------------------------------------------------------
+
 
 class TestEscalationStateOnKeepResetsAll:
     def test_on_keep_resets_consecutive(self):
@@ -5322,6 +6135,7 @@ class TestEscalationStatePivotsWithoutProgressReset:
 # NEW BATCH: AgentResult fields
 # ---------------------------------------------------------------------------
 
+
 class TestAgentResultFieldsNew:
     def test_success_true(self):
         r = AgentResult(success=True, description="ok", exit_code=0, output="")
@@ -5353,7 +6167,9 @@ class TestAgentResultFieldsNew:
 
     def test_telemetry_set(self):
         t = object()
-        r = AgentResult(success=True, description="", exit_code=0, output="", telemetry=t)
+        r = AgentResult(
+            success=True, description="", exit_code=0, output="", telemetry=t
+        )
         assert r.telemetry is t
 
     def test_empty_output(self):
@@ -5361,7 +6177,9 @@ class TestAgentResultFieldsNew:
         assert r.output == ""
 
     def test_multiline_output(self):
-        r = AgentResult(success=True, description="", exit_code=0, output="line1\nline2\nline3")
+        r = AgentResult(
+            success=True, description="", exit_code=0, output="line1\nline2\nline3"
+        )
         assert "line2" in r.output
 
 
@@ -5369,13 +6187,21 @@ class TestAgentResultFieldsNew:
 # NEW BATCH: RunResult fields extended
 # ---------------------------------------------------------------------------
 
+
 class TestRunResultFieldsNew:
     def _make(self, **kwargs):
-        d = dict(
-            marker_name="m", experiments=1, kept=1, discarded=0, crashed=0,
-            final_metric=10.0, final_confidence=1.0, final_status="completed",
-            branch="b", worktree_path="/w"
-        )
+        d = {
+            "marker_name": "m",
+            "experiments": 1,
+            "kept": 1,
+            "discarded": 0,
+            "crashed": 0,
+            "final_metric": 10.0,
+            "final_confidence": 1.0,
+            "final_status": "completed",
+            "branch": "b",
+            "worktree_path": "/w",
+        }
         d.update(kwargs)
         return RunResult(**d)
 
@@ -5420,68 +6246,80 @@ class TestRunResultFieldsNew:
 # NEW BATCH: _extract_description more edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestExtractDescriptionEdgeCasesNew:
     def test_timestamp_line_skipped(self):
         from autoresearch.engine import _extract_description
+
         out = "2024-01-01 00:00:00 something\nValid description here"
         result = _extract_description(out)
         assert result == "Valid description here"
 
     def test_bracket_prefix_skipped(self):
         from autoresearch.engine import _extract_description
+
         out = "[INFO] logline\nActual output"
         result = _extract_description(out)
         assert result == "Actual output"
 
     def test_triple_dot_skipped(self):
         from autoresearch.engine import _extract_description
+
         out = "...loading\nFinished successfully"
         result = _extract_description(out)
         assert result == "Finished successfully"
 
     def test_dollar_prompt_skipped(self):
         from autoresearch.engine import _extract_description
+
         out = "$ echo hello\nDone running"
         result = _extract_description(out)
         assert result == "Done running"
 
     def test_equal_sign_divider_skipped(self):
         from autoresearch.engine import _extract_description
+
         out = "=== RESULTS ===\nAll tests passed with 99 covered"
         result = _extract_description(out)
         assert result == "All tests passed with 99 covered"
 
     def test_triple_dash_divider_skipped(self):
         from autoresearch.engine import _extract_description
+
         out = "--- divider ---\nSuccessful experiment"
         result = _extract_description(out)
         assert result == "Successful experiment"
 
     def test_two_char_line_skipped(self):
         from autoresearch.engine import _extract_description
+
         out = "ok\nLong enough valid description line"
         result = _extract_description(out)
         assert result == "Long enough valid description line"
 
     def test_single_valid_line(self):
         from autoresearch.engine import _extract_description
+
         result = _extract_description("This is a valid description")
         assert result == "This is a valid description"
 
     def test_exactly_200_chars(self):
         from autoresearch.engine import _extract_description
+
         long = "a" * 200
         result = _extract_description(long)
         assert result == long
 
     def test_over_200_chars_truncated(self):
         from autoresearch.engine import _extract_description
+
         long = "b" * 250
         result = _extract_description(long)
         assert len(result) == 200
 
     def test_none_input_handling(self):
         from autoresearch.engine import _extract_description
+
         result = _extract_description(None)
         assert isinstance(result, str)
 
@@ -5490,49 +6328,59 @@ class TestExtractDescriptionEdgeCasesNew:
 # NEW BATCH: _target_reached more cases
 # ---------------------------------------------------------------------------
 
+
 class TestTargetReachedNewCases:
     def _m_higher(self, target):
-        return _make_marker(metric=_make_marker().metric.__class__(
-            command="echo 1",
-            extract=r"\d+",
-            direction="higher",
-            baseline=0.0,
-            target=target,
-        ))
+        return _make_marker(
+            metric=_make_marker().metric.__class__(
+                command="echo 1",
+                extract=r"\d+",
+                direction="higher",
+                baseline=0.0,
+                target=target,
+            )
+        )
 
     def test_no_target_returns_false_always(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker()
         # baseline only marker, no target
         assert _target_reached(m, 1000.0) is False
 
     def test_higher_exactly_at_boundary(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(50.0, "higher")
         assert _target_reached(m, 50.0) is True
 
     def test_lower_exactly_at_boundary(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(10.0, "lower")
         assert _target_reached(m, 10.0) is True
 
     def test_higher_below_not_reached(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(100.0, "higher")
         assert _target_reached(m, 99.99) is False
 
     def test_lower_above_not_reached(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(10.0, "lower")
         assert _target_reached(m, 10.01) is False
 
     def test_higher_zero_target_zero_current(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(0.0, "higher")
         assert _target_reached(m, 0.0) is True
 
     def test_lower_large_value(self):
         from autoresearch.engine import _target_reached
+
         m = _make_marker_with_target(1000.0, "lower")
         assert _target_reached(m, 999.0) is True
 
@@ -5541,10 +6389,19 @@ class TestTargetReachedNewCases:
 # NEW BATCH: _format_results_for_program additional
 # ---------------------------------------------------------------------------
 
+
 class TestFormatResultsForProgramNewBatch:
     def _r(self, **kwargs):
         from autoresearch.results import ExperimentResult
-        d = dict(commit="abc", metric=1.0, guard="--", status="keep", confidence="HIGH", description="desc")
+
+        d = {
+            "commit": "abc",
+            "metric": 1.0,
+            "guard": "--",
+            "status": "keep",
+            "confidence": "HIGH",
+            "description": "desc",
+        }
         d.update(kwargs)
         return ExperimentResult(**d)
 
@@ -5606,6 +6463,7 @@ class TestFormatResultsForProgramNewBatch:
 # ---------------------------------------------------------------------------
 # NEW BATCH: EscalationState additional coverage
 # ---------------------------------------------------------------------------
+
 
 class TestEscalationStateAdditionalCoverage:
     def test_initial_level_normal(self):
@@ -5787,6 +6645,7 @@ class TestExtractDescriptionFinalBatch:
 class TestTargetReachedFinalBatch:
     def _marker(self, direction="higher", target=100.0):
         from autoresearch.marker import MetricDirection
+
         m = _make_marker()
         m.metric.direction = MetricDirection(direction)
         m.metric.target = target
@@ -5825,7 +6684,15 @@ class TestTargetReachedFinalBatch:
 class TestFormatResultsExtraBatch:
     def _r(self, **kw):
         from autoresearch.results import ExperimentResult
-        d = dict(commit="abc", metric=1.0, guard="--", status="keep", confidence="MID", description="d")
+
+        d = {
+            "commit": "abc",
+            "metric": 1.0,
+            "guard": "--",
+            "status": "keep",
+            "confidence": "MID",
+            "description": "d",
+        }
         d.update(kw)
         return ExperimentResult(**d)
 

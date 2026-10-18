@@ -3,7 +3,7 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
     branches: [main, dev]
 
@@ -45,6 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -61,5 +63,25 @@ jobs:
       - name: Lint
         run: ruff check src/ tests/ --exclude tests/integration/fixtures/
 
+      - name: Size baseline
+        run: python scripts/size_gate.py
+
+      - name: Size gate rejects a new oversized unit
+        run: |
+          printf "def oversized(a, b, c, d, e, f, g, h):  # noqa: PLR0913\n    return a\n" > scripts/size_control.py
+          if python scripts/size_gate.py > size-control.log 2>&1; then
+            cat size-control.log
+            exit 1
+          fi
+          cat size-control.log
+          grep -F "Size increased: scripts/size_control.py:oversized:PLR0913 = 8" size-control.log
+          rm scripts/size_control.py
+
       - name: Test
         run: pytest tests/ -q
+
+      - name: Minimum Typer compatibility
+        run: |
+          pip uninstall -y typer
+          pip install typer==0.12.0 "click<8.2"
+          autoresearch --help

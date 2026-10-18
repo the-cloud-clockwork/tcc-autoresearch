@@ -11,7 +11,6 @@ from pydantic import BaseModel
 from autoresearch.config import AUTORESEARCH_DIR
 from autoresearch.marker import Marker, MarkerStatus
 
-
 STATE_PATH = AUTORESEARCH_DIR / "state.json"
 
 
@@ -97,7 +96,9 @@ def update_state(update_fn, state_path: Path | None = None) -> AppState:
     return state
 
 
-def derive_marker_id(repo_path: Path, marker_name: str, state: AppState | None = None) -> str:
+def derive_marker_id(
+    repo_path: Path, marker_name: str, state: AppState | None = None
+) -> str:
     """Build 'repo_name:marker_name' with conflict handling.
 
     Per SPECS 1.5: if two repos share a directory name but different paths,
@@ -109,7 +110,10 @@ def derive_marker_id(repo_path: Path, marker_name: str, state: AppState | None =
     if state is not None:
         for tracked in state.markers:
             tracked_name = Path(tracked.repo_path).name
-            if tracked_name == repo_name and Path(tracked.repo_path).resolve() != resolved:
+            if (
+                tracked_name == repo_name
+                and Path(tracked.repo_path).resolve() != resolved
+            ):
                 repo_name = str(resolved)
                 break
 
@@ -151,7 +155,9 @@ def get_tracked(state: AppState, marker_id: str) -> TrackedMarker | None:
     return None
 
 
-def get_effective_status(tracked: TrackedMarker, yaml_status: MarkerStatus) -> MarkerStatus:
+def get_effective_status(
+    tracked: TrackedMarker, yaml_status: MarkerStatus
+) -> MarkerStatus:
     """Resolve status: local override takes precedence over YAML."""
     if tracked.status_override is not None:
         return tracked.status_override
