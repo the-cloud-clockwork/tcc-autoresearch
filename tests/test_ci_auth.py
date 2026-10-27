@@ -30,10 +30,7 @@ def test_release_passes_org_ci_app_credentials():
         Path(__file__).resolve().parents[1] / ".github" / "workflows" / "release.yml"
     )
     release = yaml.safe_load(workflow.read_text())["jobs"]["release"]
-    assert (
-        release["uses"]
-        == "The-Cloud-Clockwork/.github/.github/workflows/release-reusable.yml@main"
-    )
+    assert release["uses"] == "./.github/workflows/release-reusable.yml"
     assert release["secrets"] == {
         "TCC_CI_CLIENT_ID": "${{ secrets.TCC_CI_CLIENT_ID }}",
         "TCC_CI_APP_PRIVATE_KEY": "${{ secrets.TCC_CI_APP_PRIVATE_KEY }}",

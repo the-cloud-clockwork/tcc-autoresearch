@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   release:
-    uses: The-Cloud-Clockwork/.github/.github/workflows/release-reusable.yml@main
+    uses: ./.github/workflows/release-reusable.yml
     with:
       bump: ${{ inputs.bump }}
       downstream_workflows: "workflow.yaml"
