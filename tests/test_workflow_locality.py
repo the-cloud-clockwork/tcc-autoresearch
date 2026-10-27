@@ -7,4 +7,8 @@ def test_workflows_do_not_call_private_org_repository():
     files = sorted([*workflows.glob("*.yml"), *workflows.glob("*.yaml")])
     assert files
     for workflow in files:
-        assert not re.search(r"uses:\s*the-cloud-clockwork/\.github/", workflow.read_text(), re.IGNORECASE), workflow
+        assert not re.search(
+            r"uses:\s*the-cloud-clockwork/\.github/",
+            workflow.read_text(),
+            re.IGNORECASE,
+        ), workflow
