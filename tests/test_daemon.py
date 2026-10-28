@@ -31,6 +31,8 @@ from autoresearch.marker import (
 )
 from autoresearch.state import AppState, TrackedMarker
 
+ON_THE_HOUR = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
+
 
 def _make_schedule(type: str = "on-demand", cron: str | None = None) -> Schedule:
     return Schedule(type=type, cron=cron)
@@ -102,8 +104,9 @@ class TestIsDue:
 
     def test_cron_not_due(self):
         # Last run was 5 seconds ago, cron fires every hour
-        last = (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat()
-        assert is_due(_make_schedule("cron", "0 * * * *"), last) is False
+        now = ON_THE_HOUR + timedelta(seconds=5)
+        last = ON_THE_HOUR.isoformat()
+        assert is_due(_make_schedule("cron", "0 * * * *"), last, now) is False
 
     def test_overnight_due_next_day(self):
         # Last run was yesterday at 01:00, now is today at 02:00
@@ -243,6 +246,38 @@ class TestDaemonRunnerTick:
         ):
             runner._tick()
         assert "repo:test" in runner._active_runs
+
+    @pytest.mark.parametrize(
+        ("now", "spawned"),
+        [
+            (ON_THE_HOUR + timedelta(minutes=59, seconds=30), False),
+            (ON_THE_HOUR + timedelta(hours=1), True),
+        ],
+    )
+    def test_tick_reads_injected_clock(self, now, spawned):
+        from autoresearch.config import GlobalConfig
+
+        tracked = _make_tracked(last_run=ON_THE_HOUR.isoformat())
+        state = AppState(markers=[tracked])
+        marker = _make_marker(schedule_type="cron", cron="0 * * * *")
+        mf = MarkerFile(markers=[marker])
+
+        runner = DaemonRunner(config=GlobalConfig(), clock=lambda: now)
+        with (
+            patch("autoresearch.daemon.load_state", return_value=state),
+            patch(
+                "autoresearch.daemon.find_marker_file",
+                return_value=Path("/tmp/.autoresearch.yaml"),
+            ),
+            patch("autoresearch.daemon.load_markers", return_value=mf),
+            patch(
+                "autoresearch.daemon.get_effective_status",
+                return_value=MarkerStatus.ACTIVE,
+            ),
+            patch.object(runner, "_run_marker_thread"),
+        ):
+            runner._tick()
+        assert ("repo:test" in runner._active_runs) is spawned
 
     def test_non_active_skipped(self):
         tracked = _make_tracked(last_run=None)
@@ -733,8 +768,9 @@ class TestIsDueAdditional:
 
     def test_cron_not_due_just_ran(self):
         # Just ran 1 second ago, hourly cron
-        last = datetime.now(timezone.utc).isoformat()
-        assert is_due(_make_schedule("cron", "0 * * * *"), last) is False
+        now = ON_THE_HOUR + timedelta(seconds=1)
+        last = ON_THE_HOUR.isoformat()
+        assert is_due(_make_schedule("cron", "0 * * * *"), last, now) is False
 
     def test_unknown_schedule_type_returns_false(self):
         assert is_due(_make_schedule("monthly"), None) is False
@@ -830,17 +866,15 @@ class TestStopDaemonStateUpdate:
 class TestIsDueWeekendRecentRun:
     def test_weekend_recent_last_run_not_due(self):
         """If we ran less than an hour ago, should not be due."""
-        recent = datetime.now(timezone.utc).isoformat()
-        # weekend schedule fires weekly; if just ran, not due yet
-        # (Whether it's actually due depends on croniter, but the point is
-        # last_run=now should typically not be due for a weekly cron)
-        result = is_due(_make_schedule("weekend"), recent)
-        # Should be False since we just ran
+        recent = ON_THE_HOUR.isoformat()
+        now = ON_THE_HOUR + timedelta(seconds=1)
+        result = is_due(_make_schedule("weekend"), recent, now)
         assert result is False
 
     def test_overnight_recent_last_run_not_due(self):
-        recent = datetime.now(timezone.utc).isoformat()
-        result = is_due(_make_schedule("overnight"), recent)
+        recent = ON_THE_HOUR.isoformat()
+        now = ON_THE_HOUR + timedelta(seconds=1)
+        result = is_due(_make_schedule("overnight"), recent, now)
         assert result is False
 
 
@@ -900,14 +934,18 @@ class TestResolveCronExpressionEdgeCases:
 
 class TestIsDueBoundary:
     def test_exactly_at_next_fire_is_due(self):
-        # Run 61 minutes ago, hourly cron → should be due
-        last = (datetime.now(timezone.utc) - timedelta(minutes=61)).isoformat()
-        assert is_due(_make_schedule("cron", "0 * * * *"), last) is True
+        last = ON_THE_HOUR.isoformat()
+        now = ON_THE_HOUR + timedelta(hours=1)
+        assert is_due(_make_schedule("cron", "0 * * * *"), last, now) is True
 
     def test_just_before_next_fire_not_due(self):
-        # Run 30 seconds ago, hourly cron → should not be due
-        last = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
-        assert is_due(_make_schedule("cron", "0 * * * *"), last) is False
+        last = ON_THE_HOUR.isoformat()
+        now = ON_THE_HOUR + timedelta(minutes=59, seconds=30)
+        assert is_due(_make_schedule("cron", "0 * * * *"), last, now) is False
+
+    def test_run_thirty_seconds_before_the_hour_is_due_on_the_hour(self):
+        last = (ON_THE_HOUR - timedelta(seconds=30)).isoformat()
+        assert is_due(_make_schedule("cron", "0 * * * *"), last, ON_THE_HOUR) is True
 
 
 # ---------------------------------------------------------------------------
@@ -1317,9 +1355,9 @@ class TestIsDueMoreScheduleTypes:
         assert is_due(s, last_run) is True
 
     def test_hourly_schedule_not_due_when_just_ran(self):
-        last_run = datetime.now(timezone.utc).isoformat()
+        last_run = ON_THE_HOUR.isoformat()
         s = _make_schedule("cron", "0 * * * *")
-        assert is_due(s, last_run) is False
+        assert is_due(s, last_run, ON_THE_HOUR + timedelta(seconds=1)) is False
 
     def test_on_demand_never_due(self):
         last_run = (datetime.now(timezone.utc) - timedelta(days=365)).isoformat()
@@ -2569,8 +2607,8 @@ class TestIsDueExtended:
         assert is_due(self._make_schedule("overnight"), "not-a-date") is True
 
     def test_last_run_very_recent_not_due(self):
-        now = datetime.now(timezone.utc)
-        recent = (now - timedelta(seconds=10)).isoformat()
+        now = ON_THE_HOUR + timedelta(seconds=10)
+        recent = ON_THE_HOUR.isoformat()
         # overnight fires once/day: not due 10 seconds after last run
         assert is_due(self._make_schedule("overnight"), recent, now) is False
 
@@ -3154,8 +3192,8 @@ class TestIsDueFurtherVariants:
 
     def test_overnight_recent_run_not_due(self):
         s = _make_schedule("overnight")
-        recent = datetime.now(timezone.utc).isoformat()
-        assert is_due(s, recent) is False
+        recent = ON_THE_HOUR.isoformat()
+        assert is_due(s, recent, ON_THE_HOUR + timedelta(seconds=1)) is False
 
     def test_weekend_no_run_is_due(self):
         s = _make_schedule("weekend")
