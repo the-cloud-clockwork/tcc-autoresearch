@@ -1,9 +1,8 @@
 """Tests for global config management."""
 
-
 from autoresearch.config import (
-    DefaultsConfig,
     DaemonConfig,
+    DefaultsConfig,
     GlobalConfig,
     ensure_autoresearch_dir,
     load_config,
@@ -20,9 +19,7 @@ class TestLoadConfig:
 
     def test_reads_existing_file(self, tmp_path):
         cfg_path = tmp_path / "config.yaml"
-        cfg_path.write_text(
-            "defaults:\n  model: opus\n  max_experiments: 100\n"
-        )
+        cfg_path.write_text("defaults:\n  model: opus\n  max_experiments: 100\n")
         config = load_config(cfg_path)
         assert config.defaults.model == "opus"
         assert config.defaults.max_experiments == 100

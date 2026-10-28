@@ -378,6 +378,7 @@ class TestParseDurationBoundaries:
 # parse_duration — additional edge cases and boundary coverage
 # ---------------------------------------------------------------------------
 
+
 class TestParseDurationZeroAndOne:
     def test_zero_minutes_returns_default(self):
         assert parse_duration("0m") == 600
@@ -471,6 +472,7 @@ class TestParseDurationCaseInsensitive:
 # ---------------------------------------------------------------------------
 # parse_duration — extended edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestParseDurationExtended:
     def test_1m(self):
@@ -614,6 +616,7 @@ class TestParseDurationSmallValues:
 # ---------------------------------------------------------------------------
 # parse_duration — large and boundary values
 # ---------------------------------------------------------------------------
+
 
 class TestParseDurationLargeValues:
     def test_100s(self):
@@ -794,6 +797,7 @@ class TestParseDurationMoreUnits:
 # ---------------------------------------------------------------------------
 # parse_duration — additional unit coverage
 # ---------------------------------------------------------------------------
+
 
 class TestParseDurationHourUnits:
     def test_1h_is_3600(self):
@@ -1203,156 +1207,376 @@ class TestParseDurationInvalidVariants:
 # ---------------------------------------------------------------------------
 
 
-
 class TestParseDurationNewBatch:
     # Basic valid
-    def test_1m(self): assert parse_duration("1m") == 60
-    def test_2m(self): assert parse_duration("2m") == 120
-    def test_3m(self): assert parse_duration("3m") == 180
-    def test_4m(self): assert parse_duration("4m") == 240
-    def test_5m(self): assert parse_duration("5m") == 300
-    def test_6m(self): assert parse_duration("6m") == 360
-    def test_7m(self): assert parse_duration("7m") == 420
-    def test_8m(self): assert parse_duration("8m") == 480
-    def test_9m(self): assert parse_duration("9m") == 540
-    def test_10m(self): assert parse_duration("10m") == 600
-    def test_15m(self): assert parse_duration("15m") == 900
-    def test_20m(self): assert parse_duration("20m") == 1200
-    def test_25m(self): assert parse_duration("25m") == 1500
-    def test_30m(self): assert parse_duration("30m") == 1800
-    def test_45m(self): assert parse_duration("45m") == 2700
-    def test_60m(self): assert parse_duration("60m") == 3600
-    def test_90m(self): assert parse_duration("90m") == 5400
-    def test_120m(self): assert parse_duration("120m") == 7200
+    def test_1m(self):
+        assert parse_duration("1m") == 60
+
+    def test_2m(self):
+        assert parse_duration("2m") == 120
+
+    def test_3m(self):
+        assert parse_duration("3m") == 180
+
+    def test_4m(self):
+        assert parse_duration("4m") == 240
+
+    def test_5m(self):
+        assert parse_duration("5m") == 300
+
+    def test_6m(self):
+        assert parse_duration("6m") == 360
+
+    def test_7m(self):
+        assert parse_duration("7m") == 420
+
+    def test_8m(self):
+        assert parse_duration("8m") == 480
+
+    def test_9m(self):
+        assert parse_duration("9m") == 540
+
+    def test_10m(self):
+        assert parse_duration("10m") == 600
+
+    def test_15m(self):
+        assert parse_duration("15m") == 900
+
+    def test_20m(self):
+        assert parse_duration("20m") == 1200
+
+    def test_25m(self):
+        assert parse_duration("25m") == 1500
+
+    def test_30m(self):
+        assert parse_duration("30m") == 1800
+
+    def test_45m(self):
+        assert parse_duration("45m") == 2700
+
+    def test_60m(self):
+        assert parse_duration("60m") == 3600
+
+    def test_90m(self):
+        assert parse_duration("90m") == 5400
+
+    def test_120m(self):
+        assert parse_duration("120m") == 7200
 
     # hours
-    def test_1h(self): assert parse_duration("1h") == 3600
-    def test_2h(self): assert parse_duration("2h") == 7200
-    def test_3h(self): assert parse_duration("3h") == 10800
-    def test_4h(self): assert parse_duration("4h") == 14400
-    def test_5h(self): assert parse_duration("5h") == 18000
-    def test_6h(self): assert parse_duration("6h") == 21600
-    def test_12h(self): assert parse_duration("12h") == 43200
-    def test_24h(self): assert parse_duration("24h") == 86400
+    def test_1h(self):
+        assert parse_duration("1h") == 3600
+
+    def test_2h(self):
+        assert parse_duration("2h") == 7200
+
+    def test_3h(self):
+        assert parse_duration("3h") == 10800
+
+    def test_4h(self):
+        assert parse_duration("4h") == 14400
+
+    def test_5h(self):
+        assert parse_duration("5h") == 18000
+
+    def test_6h(self):
+        assert parse_duration("6h") == 21600
+
+    def test_12h(self):
+        assert parse_duration("12h") == 43200
+
+    def test_24h(self):
+        assert parse_duration("24h") == 86400
 
     # seconds
-    def test_1s(self): assert parse_duration("1s") == 1
-    def test_5s(self): assert parse_duration("5s") == 5
-    def test_10s(self): assert parse_duration("10s") == 10
-    def test_30s(self): assert parse_duration("30s") == 30
-    def test_60s(self): assert parse_duration("60s") == 60
-    def test_90s(self): assert parse_duration("90s") == 90
-    def test_120s(self): assert parse_duration("120s") == 120
-    def test_300s(self): assert parse_duration("300s") == 300
+    def test_1s(self):
+        assert parse_duration("1s") == 1
+
+    def test_5s(self):
+        assert parse_duration("5s") == 5
+
+    def test_10s(self):
+        assert parse_duration("10s") == 10
+
+    def test_30s(self):
+        assert parse_duration("30s") == 30
+
+    def test_60s(self):
+        assert parse_duration("60s") == 60
+
+    def test_90s(self):
+        assert parse_duration("90s") == 90
+
+    def test_120s(self):
+        assert parse_duration("120s") == 120
+
+    def test_300s(self):
+        assert parse_duration("300s") == 300
 
     # bare numbers (minutes)
-    def test_bare_1(self): assert parse_duration("1") == 60
-    def test_bare_2(self): assert parse_duration("2") == 120
-    def test_bare_5(self): assert parse_duration("5") == 300
-    def test_bare_10(self): assert parse_duration("10") == 600
-    def test_bare_15(self): assert parse_duration("15") == 900
-    def test_bare_30(self): assert parse_duration("30") == 1800
-    def test_bare_60(self): assert parse_duration("60") == 3600
+    def test_bare_1(self):
+        assert parse_duration("1") == 60
+
+    def test_bare_2(self):
+        assert parse_duration("2") == 120
+
+    def test_bare_5(self):
+        assert parse_duration("5") == 300
+
+    def test_bare_10(self):
+        assert parse_duration("10") == 600
+
+    def test_bare_15(self):
+        assert parse_duration("15") == 900
+
+    def test_bare_30(self):
+        assert parse_duration("30") == 1800
+
+    def test_bare_60(self):
+        assert parse_duration("60") == 3600
 
     # uppercase
-    def test_1M_upper(self): assert parse_duration("1M") == 60
-    def test_1H_upper(self): assert parse_duration("1H") == 3600
-    def test_1S_upper(self): assert parse_duration("1S") == 1
+    def test_1M_upper(self):
+        assert parse_duration("1M") == 60
+
+    def test_1H_upper(self):
+        assert parse_duration("1H") == 3600
+
+    def test_1S_upper(self):
+        assert parse_duration("1S") == 1
 
     # mixed case
-    def test_5Min(self): assert parse_duration("5Min") == 300 or parse_duration("5Min") == 600
-    def test_2HR(self): assert parse_duration("2HR") in (7200, 600)
+    def test_5Min(self):
+        assert parse_duration("5Min") == 300 or parse_duration("5Min") == 600
+
+    def test_2HR(self):
+        assert parse_duration("2HR") in (7200, 600)
 
     # invalid
-    def test_empty_default(self): assert parse_duration("") == 600
+    def test_empty_default(self):
+        assert parse_duration("") == 600
+
     def test_none_raises_or_default(self):
         try:
             result = parse_duration(None)
             assert result == 600
         except (AttributeError, TypeError):
             pass
-    def test_negative_default(self): assert parse_duration("-5m") == 600
-    def test_alpha_only_default(self): assert parse_duration("abc") == 600
-    def test_space_default(self): assert parse_duration("  ") == 600
-    def test_special_chars_default(self): assert parse_duration("@!#") == 600
-    def test_just_dot_default(self): assert parse_duration(".") == 600
-    def test_float_string_default(self): assert parse_duration("1.5m") == 600
-    def test_comma_default(self): assert parse_duration("1,5m") == 600
-    def test_unit_before_number_default(self): assert parse_duration("m5") == 600
-    def test_question_mark_default(self): assert parse_duration("?10m") == 600
-    def test_double_unit_default(self): assert parse_duration("5mm") == 600 or isinstance(parse_duration("5mm"), int)
+
+    def test_negative_default(self):
+        assert parse_duration("-5m") == 600
+
+    def test_alpha_only_default(self):
+        assert parse_duration("abc") == 600
+
+    def test_space_default(self):
+        assert parse_duration("  ") == 600
+
+    def test_special_chars_default(self):
+        assert parse_duration("@!#") == 600
+
+    def test_just_dot_default(self):
+        assert parse_duration(".") == 600
+
+    def test_float_string_default(self):
+        assert parse_duration("1.5m") == 600
+
+    def test_comma_default(self):
+        assert parse_duration("1,5m") == 600
+
+    def test_unit_before_number_default(self):
+        assert parse_duration("m5") == 600
+
+    def test_question_mark_default(self):
+        assert parse_duration("?10m") == 600
+
+    def test_double_unit_default(self):
+        assert parse_duration("5mm") == 600 or isinstance(parse_duration("5mm"), int)
 
     # returns int always
-    def test_returns_int_for_valid(self): assert isinstance(parse_duration("5m"), int)
-    def test_returns_int_for_invalid(self): assert isinstance(parse_duration("xyz"), int)
-    def test_returns_int_for_empty(self): assert isinstance(parse_duration(""), int)
-    def test_returns_int_for_hours(self): assert isinstance(parse_duration("2h"), int)
-    def test_returns_int_for_seconds(self): assert isinstance(parse_duration("30s"), int)
+    def test_returns_int_for_valid(self):
+        assert isinstance(parse_duration("5m"), int)
+
+    def test_returns_int_for_invalid(self):
+        assert isinstance(parse_duration("xyz"), int)
+
+    def test_returns_int_for_empty(self):
+        assert isinstance(parse_duration(""), int)
+
+    def test_returns_int_for_hours(self):
+        assert isinstance(parse_duration("2h"), int)
+
+    def test_returns_int_for_seconds(self):
+        assert isinstance(parse_duration("30s"), int)
 
     # default value checks
-    def test_default_is_600(self): assert parse_duration("") == 600
-    def test_default_is_positive(self): assert parse_duration("bad") > 0
+    def test_default_is_600(self):
+        assert parse_duration("") == 600
+
+    def test_default_is_positive(self):
+        assert parse_duration("bad") > 0
 
 
 # ---------------------------------------------------------------------------
 # NEW BATCH C: more parse_duration edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestParseDurationC:
-    def test_100m(self): assert parse_duration("100m") == 6000
-    def test_200s(self): assert parse_duration("200s") == 200
-    def test_24h(self): assert parse_duration("24h") == 86400
-    def test_90min(self): assert parse_duration("90min") == 5400
-    def test_7200sec(self): assert parse_duration("7200sec") == 7200
-    def test_integer_always(self): assert isinstance(parse_duration("3h"), int)
-    def test_60m_equals_3600(self): assert parse_duration("60m") == 3600
-    def test_1h_equals_60m(self): assert parse_duration("1h") == parse_duration("60m")
-    def test_60s_not_default(self): assert parse_duration("60s") != 600
-    def test_10_bare(self): assert parse_duration("10") == 600
-    def test_3_bare(self): assert parse_duration("3") == 180
-    def test_2min(self): assert parse_duration("2min") == 120
-    def test_5hr(self): assert parse_duration("5hr") == 18000
-    def test_empty_is_600(self): assert parse_duration("") == 600
-    def test_whitespace_is_600(self): assert parse_duration("   ") == 600
-    def test_tab_is_600(self): assert parse_duration("\t") == 600
-    def test_zero_s(self): assert parse_duration("0s") == 600
-    def test_zero_h(self): assert parse_duration("0h") == 600
-    def test_large_hours(self): assert parse_duration("10h") == 36000
-    def test_large_seconds(self): assert parse_duration("3600s") == 3600
-    def test_case_insensitive_min(self): assert parse_duration("5MIN") == 300
-    def test_case_insensitive_sec(self): assert parse_duration("30SEC") == 30
-    def test_case_insensitive_hr(self): assert parse_duration("2HR") == 7200
-    def test_positive_result(self): assert parse_duration("5m") > 0
-    def test_result_ge_1(self): assert parse_duration("1s") >= 1
-    def test_result_le_86400_for_24h(self): assert parse_duration("24h") <= 86400
-    def test_25m(self): assert parse_duration("25m") == 1500
-    def test_15m(self): assert parse_duration("15m") == 900
-    def test_45s(self): assert parse_duration("45s") == 45
+    def test_100m(self):
+        assert parse_duration("100m") == 6000
+
+    def test_200s(self):
+        assert parse_duration("200s") == 200
+
+    def test_24h(self):
+        assert parse_duration("24h") == 86400
+
+    def test_90min(self):
+        assert parse_duration("90min") == 5400
+
+    def test_7200sec(self):
+        assert parse_duration("7200sec") == 7200
+
+    def test_integer_always(self):
+        assert isinstance(parse_duration("3h"), int)
+
+    def test_60m_equals_3600(self):
+        assert parse_duration("60m") == 3600
+
+    def test_1h_equals_60m(self):
+        assert parse_duration("1h") == parse_duration("60m")
+
+    def test_60s_not_default(self):
+        assert parse_duration("60s") != 600
+
+    def test_10_bare(self):
+        assert parse_duration("10") == 600
+
+    def test_3_bare(self):
+        assert parse_duration("3") == 180
+
+    def test_2min(self):
+        assert parse_duration("2min") == 120
+
+    def test_5hr(self):
+        assert parse_duration("5hr") == 18000
+
+    def test_empty_is_600(self):
+        assert parse_duration("") == 600
+
+    def test_whitespace_is_600(self):
+        assert parse_duration("   ") == 600
+
+    def test_tab_is_600(self):
+        assert parse_duration("\t") == 600
+
+    def test_zero_s(self):
+        assert parse_duration("0s") == 600
+
+    def test_zero_h(self):
+        assert parse_duration("0h") == 600
+
+    def test_large_hours(self):
+        assert parse_duration("10h") == 36000
+
+    def test_large_seconds(self):
+        assert parse_duration("3600s") == 3600
+
+    def test_case_insensitive_min(self):
+        assert parse_duration("5MIN") == 300
+
+    def test_case_insensitive_sec(self):
+        assert parse_duration("30SEC") == 30
+
+    def test_case_insensitive_hr(self):
+        assert parse_duration("2HR") == 7200
+
+    def test_positive_result(self):
+        assert parse_duration("5m") > 0
+
+    def test_result_ge_1(self):
+        assert parse_duration("1s") >= 1
+
+    def test_result_le_86400_for_24h(self):
+        assert parse_duration("24h") <= 86400
+
+    def test_25m(self):
+        assert parse_duration("25m") == 1500
+
+    def test_15m(self):
+        assert parse_duration("15m") == 900
+
+    def test_45s(self):
+        assert parse_duration("45s") == 45
 
 
 class TestParseDurationD:
-    def test_result_type_str_input(self): assert isinstance(parse_duration("10m"), int)
-    def test_1m_60(self): assert parse_duration("1m") == 60
-    def test_1h_3600(self): assert parse_duration("1h") == 3600
-    def test_1s_1(self): assert parse_duration("1s") == 1
-    def test_not_none(self): assert parse_duration("5m") is not None
-    def test_30min(self): assert parse_duration("30min") == 1800
-    def test_6h(self): assert parse_duration("6h") == 21600
-    def test_500s(self): assert parse_duration("500s") == 500
-    def test_50min(self): assert parse_duration("50min") == 3000
-    def test_99s(self): assert parse_duration("99s") == 99
-    def test_8hr(self): assert parse_duration("8hr") == 28800
-    def test_greater_than_zero_for_valid(self): assert parse_duration("1s") > 0
-    def test_default_600_on_garbage(self): assert parse_duration("!!!") == 600
-    def test_default_600_on_slash(self): assert parse_duration("/10m") == 600
-    def test_default_600_on_asterisk(self): assert parse_duration("*5m") == 600
-    def test_number_5_is_300(self): assert parse_duration("5") == 300
-    def test_number_60_is_3600(self): assert parse_duration("60") == 3600
-    def test_number_1_is_60(self): assert parse_duration("1") == 60
-    def test_number_2_is_120(self): assert parse_duration("2") == 120
-    def test_120m_7200(self): assert parse_duration("120m") == 7200
-    def test_240s_240(self): assert parse_duration("240s") == 240
-    def test_48h_172800(self): assert parse_duration("48h") == 172800
+    def test_result_type_str_input(self):
+        assert isinstance(parse_duration("10m"), int)
+
+    def test_1m_60(self):
+        assert parse_duration("1m") == 60
+
+    def test_1h_3600(self):
+        assert parse_duration("1h") == 3600
+
+    def test_1s_1(self):
+        assert parse_duration("1s") == 1
+
+    def test_not_none(self):
+        assert parse_duration("5m") is not None
+
+    def test_30min(self):
+        assert parse_duration("30min") == 1800
+
+    def test_6h(self):
+        assert parse_duration("6h") == 21600
+
+    def test_500s(self):
+        assert parse_duration("500s") == 500
+
+    def test_50min(self):
+        assert parse_duration("50min") == 3000
+
+    def test_99s(self):
+        assert parse_duration("99s") == 99
+
+    def test_8hr(self):
+        assert parse_duration("8hr") == 28800
+
+    def test_greater_than_zero_for_valid(self):
+        assert parse_duration("1s") > 0
+
+    def test_default_600_on_garbage(self):
+        assert parse_duration("!!!") == 600
+
+    def test_default_600_on_slash(self):
+        assert parse_duration("/10m") == 600
+
+    def test_default_600_on_asterisk(self):
+        assert parse_duration("*5m") == 600
+
+    def test_number_5_is_300(self):
+        assert parse_duration("5") == 300
+
+    def test_number_60_is_3600(self):
+        assert parse_duration("60") == 3600
+
+    def test_number_1_is_60(self):
+        assert parse_duration("1") == 60
+
+    def test_number_2_is_120(self):
+        assert parse_duration("2") == 120
+
+    def test_120m_7200(self):
+        assert parse_duration("120m") == 7200
+
+    def test_240s_240(self):
+        assert parse_duration("240s") == 240
+
+    def test_48h_172800(self):
+        assert parse_duration("48h") == 172800
 
 
 # ============================================================
@@ -1360,18 +1584,20 @@ class TestParseDurationD:
 # ============================================================
 
 import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
+
 from autoresearch.results import (
-    ExperimentResult,
-    ensure_results_dir,
-    read_results,
-    append_result,
-    get_latest_metric,
-    get_kept_metrics,
     RESULTS_DIR,
     RESULTS_FILE,
     TSV_HEADER,
+    ExperimentResult,
+    append_result,
+    ensure_results_dir,
+    get_kept_metrics,
+    get_latest_metric,
+    read_results,
 )
 
 
@@ -1397,7 +1623,9 @@ class TestExperimentResultModel:
         assert r.confidence == "--"
 
     def test_status_discard(self):
-        r = ExperimentResult(commit="abc", metric=1.0, status="discard", description="d")
+        r = ExperimentResult(
+            commit="abc", metric=1.0, status="discard", description="d"
+        )
         assert r.status == "discard"
 
     def test_status_crash(self):
@@ -1405,19 +1633,27 @@ class TestExperimentResultModel:
         assert r.status == "crash"
 
     def test_custom_guard(self):
-        r = ExperimentResult(commit="abc", metric=1.0, guard="pass", status="keep", description="d")
+        r = ExperimentResult(
+            commit="abc", metric=1.0, guard="pass", status="keep", description="d"
+        )
         assert r.guard == "pass"
 
     def test_custom_confidence(self):
-        r = ExperimentResult(commit="abc", metric=1.0, status="keep", confidence="HIGH", description="d")
+        r = ExperimentResult(
+            commit="abc", metric=1.0, status="keep", confidence="HIGH", description="d"
+        )
         assert r.confidence == "HIGH"
 
     def test_description_stored(self):
-        r = ExperimentResult(commit="abc", metric=1.0, status="keep", description="test desc")
+        r = ExperimentResult(
+            commit="abc", metric=1.0, status="keep", description="test desc"
+        )
         assert r.description == "test desc"
 
     def test_commit_stored(self):
-        r = ExperimentResult(commit="deadbeef", metric=1.0, status="keep", description="d")
+        r = ExperimentResult(
+            commit="deadbeef", metric=1.0, status="keep", description="d"
+        )
         assert r.commit == "deadbeef"
 
 
@@ -1463,7 +1699,9 @@ class TestReadResults:
 
     def test_reads_commit(self):
         repo = _tmp_repo()
-        r = ExperimentResult(commit="deadbeef", metric=5.0, status="keep", description="d")
+        r = ExperimentResult(
+            commit="deadbeef", metric=5.0, status="keep", description="d"
+        )
         append_result(repo, "m", r)
         assert read_results(repo, "m")[0].commit == "deadbeef"
 
@@ -1476,32 +1714,46 @@ class TestReadResults:
     def test_reads_multiple_rows(self):
         repo = _tmp_repo()
         for i in range(3):
-            r = ExperimentResult(commit=f"c{i}", metric=float(i), status="keep", description="d")
+            r = ExperimentResult(
+                commit=f"c{i}", metric=float(i), status="keep", description="d"
+            )
             append_result(repo, "m", r)
         assert len(read_results(repo, "m")) == 3
 
     def test_reads_status(self):
         repo = _tmp_repo()
-        r = ExperimentResult(commit="abc", metric=1.0, status="discard", description="d")
+        r = ExperimentResult(
+            commit="abc", metric=1.0, status="discard", description="d"
+        )
         append_result(repo, "m", r)
         assert read_results(repo, "m")[0].status == "discard"
 
     def test_reads_confidence(self):
         repo = _tmp_repo()
-        r = ExperimentResult(commit="abc", metric=1.0, status="keep", confidence="HIGH", description="d")
+        r = ExperimentResult(
+            commit="abc", metric=1.0, status="keep", confidence="HIGH", description="d"
+        )
         append_result(repo, "m", r)
         assert read_results(repo, "m")[0].confidence == "HIGH"
 
     def test_reads_description(self):
         repo = _tmp_repo()
-        r = ExperimentResult(commit="abc", metric=1.0, status="keep", description="my desc")
+        r = ExperimentResult(
+            commit="abc", metric=1.0, status="keep", description="my desc"
+        )
         append_result(repo, "m", r)
         assert read_results(repo, "m")[0].description == "my desc"
 
     def test_preserves_order(self):
         repo = _tmp_repo()
         for i in range(5):
-            append_result(repo, "m", ExperimentResult(commit=f"c{i}", metric=float(i), status="keep", description="d"))
+            append_result(
+                repo,
+                "m",
+                ExperimentResult(
+                    commit=f"c{i}", metric=float(i), status="keep", description="d"
+                ),
+            )
         results = read_results(repo, "m")
         assert [r.commit for r in results] == ["c0", "c1", "c2", "c3", "c4"]
 
@@ -1525,7 +1777,13 @@ class TestAppendResult:
     def test_header_written_once(self):
         repo = _tmp_repo()
         for i in range(3):
-            append_result(repo, "m", ExperimentResult(commit=f"c{i}", metric=1.0, status="keep", description="d"))
+            append_result(
+                repo,
+                "m",
+                ExperimentResult(
+                    commit=f"c{i}", metric=1.0, status="keep", description="d"
+                ),
+            )
         path = repo / RESULTS_DIR / "m" / RESULTS_FILE
         lines = path.read_text().splitlines()
         header_count = sum(1 for line in lines if "commit" in line and "metric" in line)
@@ -1534,12 +1792,22 @@ class TestAppendResult:
     def test_appends_multiple(self):
         repo = _tmp_repo()
         for i in range(4):
-            append_result(repo, "m", ExperimentResult(commit=f"c{i}", metric=float(i), status="keep", description="d"))
+            append_result(
+                repo,
+                "m",
+                ExperimentResult(
+                    commit=f"c{i}", metric=float(i), status="keep", description="d"
+                ),
+            )
         assert len(read_results(repo, "m")) == 4
 
     def test_writes_tsv_format(self):
         repo = _tmp_repo()
-        append_result(repo, "m", ExperimentResult(commit="abc", metric=1.0, status="keep", description="d"))
+        append_result(
+            repo,
+            "m",
+            ExperimentResult(commit="abc", metric=1.0, status="keep", description="d"),
+        )
         path = repo / RESULTS_DIR / "m" / RESULTS_FILE
         content = path.read_text()
         assert "\t" in content
@@ -1559,7 +1827,9 @@ class TestGetLatestMetric:
     def test_skips_discard(self):
         rs = [
             ExperimentResult(commit="a", metric=10.0, status="keep", description="d"),
-            ExperimentResult(commit="b", metric=99.0, status="discard", description="d"),
+            ExperimentResult(
+                commit="b", metric=99.0, status="discard", description="d"
+            ),
         ]
         assert get_latest_metric(rs) == 10.0
 
@@ -1571,7 +1841,9 @@ class TestGetLatestMetric:
         assert get_latest_metric(rs) == 5.0
 
     def test_all_discard_returns_none(self):
-        rs = [ExperimentResult(commit="a", metric=1.0, status="discard", description="d")]
+        rs = [
+            ExperimentResult(commit="a", metric=1.0, status="discard", description="d")
+        ]
         assert get_latest_metric(rs) is None
 
     def test_single_keep(self):
@@ -1598,7 +1870,9 @@ class TestGetKeptMetrics:
     def test_excludes_discard(self):
         rs = [
             ExperimentResult(commit="a", metric=1.0, status="keep", description="d"),
-            ExperimentResult(commit="b", metric=99.0, status="discard", description="d"),
+            ExperimentResult(
+                commit="b", metric=99.0, status="discard", description="d"
+            ),
         ]
         assert get_kept_metrics(rs) == [1.0]
 
@@ -1611,13 +1885,17 @@ class TestGetKeptMetrics:
 
     def test_multiple_keeps(self):
         rs = [
-            ExperimentResult(commit=f"c{i}", metric=float(i), status="keep", description="d")
+            ExperimentResult(
+                commit=f"c{i}", metric=float(i), status="keep", description="d"
+            )
             for i in range(5)
         ]
         assert get_kept_metrics(rs) == [0.0, 1.0, 2.0, 3.0, 4.0]
 
     def test_all_discarded(self):
-        rs = [ExperimentResult(commit="a", metric=1.0, status="discard", description="d")]
+        rs = [
+            ExperimentResult(commit="a", metric=1.0, status="discard", description="d")
+        ]
         assert get_kept_metrics(rs) == []
 
 
@@ -1640,12 +1918,12 @@ class TestTsvHeader:
 # ============================================================
 
 from autoresearch.metrics import (
-    is_improved,
+    GuardResult,
+    HarnessResult,
+    _shell_quote,
     compute_confidence,
     confidence_label,
-    HarnessResult,
-    GuardResult,
-    _shell_quote,
+    is_improved,
 )
 
 
@@ -1795,12 +2073,16 @@ class TestHarnessResult:
 
     def test_stdout_stored(self):
         p = Path("/tmp/test.log")
-        r = HarnessResult(exit_code=0, stdout="hello", stderr="", metric=1.0, log_path=p)
+        r = HarnessResult(
+            exit_code=0, stdout="hello", stderr="", metric=1.0, log_path=p
+        )
         assert r.stdout == "hello"
 
     def test_stderr_stored(self):
         p = Path("/tmp/test.log")
-        r = HarnessResult(exit_code=1, stdout="", stderr="error msg", metric=None, log_path=p)
+        r = HarnessResult(
+            exit_code=1, stdout="", stderr="error msg", metric=None, log_path=p
+        )
         assert r.stderr == "error msg"
 
 
@@ -1830,27 +2112,38 @@ class TestGuardResult:
 # Tests for autoresearch.state
 # ============================================================
 
+from autoresearch.marker import (
+    AgentConfig,
+    Marker,
+    MarkerStatus,
+    Metric,
+    Schedule,
+    Target,
+)
 from autoresearch.state import (
-    TrackedMarker,
-    DaemonState,
     AppState,
+    DaemonState,
+    TrackedMarker,
+    derive_marker_id,
+    get_effective_status,
+    get_tracked,
     load_state,
     save_state,
-    derive_marker_id,
     track_marker,
     untrack_marker,
-    get_tracked,
-    get_effective_status,
 )
-from autoresearch.marker import AgentConfig, MarkerStatus, Marker, Metric, Target, Schedule
 
 
 def _make_state_marker(name="test") -> Marker:
     return Marker(
         name=name,
         target=Target(mutable=["src/main.py"]),
-        metric=Metric(command="echo 1", extract=r"\d+", direction="higher", baseline=1.0),
-        agent=AgentConfig(model="sonnet", budget_per_experiment="5m", max_experiments=10),
+        metric=Metric(
+            command="echo 1", extract=r"\d+", direction="higher", baseline=1.0
+        ),
+        agent=AgentConfig(
+            model="sonnet", budget_per_experiment="5m", max_experiments=10
+        ),
         schedule=Schedule(type="on-demand"),
     )
 
@@ -1866,23 +2159,41 @@ class TestTrackedMarker:
         assert t.status_override is None
 
     def test_last_run_stored(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", last_run="2026-01-01T00:00:00")
+        t = TrackedMarker(
+            id="r:m",
+            repo_path="/r",
+            repo_name="r",
+            marker_name="m",
+            last_run="2026-01-01T00:00:00",
+        )
         assert t.last_run == "2026-01-01T00:00:00"
 
     def test_baseline_stored(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", baseline=5.0)
+        t = TrackedMarker(
+            id="r:m", repo_path="/r", repo_name="r", marker_name="m", baseline=5.0
+        )
         assert t.baseline == 5.0
 
     def test_current_stored(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", current=10.0)
+        t = TrackedMarker(
+            id="r:m", repo_path="/r", repo_name="r", marker_name="m", current=10.0
+        )
         assert t.current == 10.0
 
     def test_branch_stored(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", branch="main")
+        t = TrackedMarker(
+            id="r:m", repo_path="/r", repo_name="r", marker_name="m", branch="main"
+        )
         assert t.branch == "main"
 
     def test_worktree_path_stored(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", worktree_path="/wt")
+        t = TrackedMarker(
+            id="r:m",
+            repo_path="/r",
+            repo_name="r",
+            marker_name="m",
+            worktree_path="/wt",
+        )
         assert t.worktree_path == "/wt"
 
     def test_last_run_experiments_default(self):
@@ -1952,7 +2263,12 @@ class TestLoadSaveState:
     def test_roundtrip_preserves_id(self):
         path = Path(tempfile.mkdtemp()) / "state.json"
         state = AppState()
-        t = TrackedMarker(id="myrepo:mymarker", repo_path="/r", repo_name="myrepo", marker_name="mymarker")
+        t = TrackedMarker(
+            id="myrepo:mymarker",
+            repo_path="/r",
+            repo_name="myrepo",
+            marker_name="mymarker",
+        )
         state.markers.append(t)
         save_state(state, path)
         loaded = load_state(path)
@@ -2093,17 +2409,35 @@ class TestGetEffectiveStatus:
         assert result == MarkerStatus.ACTIVE
 
     def test_override_takes_precedence(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", status_override=MarkerStatus.PAUSED)
+        t = TrackedMarker(
+            id="r:m",
+            repo_path="/r",
+            repo_name="r",
+            marker_name="m",
+            status_override=MarkerStatus.PAUSED,
+        )
         result = get_effective_status(t, MarkerStatus.ACTIVE)
         assert result == MarkerStatus.PAUSED
 
     def test_none_override_uses_yaml(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", status_override=None)
+        t = TrackedMarker(
+            id="r:m",
+            repo_path="/r",
+            repo_name="r",
+            marker_name="m",
+            status_override=None,
+        )
         result = get_effective_status(t, MarkerStatus.COMPLETED)
         assert result == MarkerStatus.COMPLETED
 
     def test_override_paused(self):
-        t = TrackedMarker(id="r:m", repo_path="/r", repo_name="r", marker_name="m", status_override=MarkerStatus.PAUSED)
+        t = TrackedMarker(
+            id="r:m",
+            repo_path="/r",
+            repo_name="r",
+            marker_name="m",
+            status_override=MarkerStatus.PAUSED,
+        )
         result = get_effective_status(t, MarkerStatus.ACTIVE)
         assert result == MarkerStatus.PAUSED
 
@@ -2113,11 +2447,11 @@ class TestGetEffectiveStatus:
 # ============================================================
 
 from autoresearch.ideas import (
-    create_ideas_template,
-    read_ideas,
-    append_idea,
     IDEAS_FILE,
     SECTIONS,
+    append_idea,
+    create_ideas_template,
+    read_ideas,
 )
 
 

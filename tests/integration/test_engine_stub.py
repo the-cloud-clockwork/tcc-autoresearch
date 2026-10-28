@@ -43,30 +43,34 @@ def engine_repo(git_repo):
     subprocess.run(["git", "add", "."], cwd=git_repo, capture_output=True, check=True)
     subprocess.run(
         ["git", "commit", "-m", "add ruff errors"],
-        cwd=git_repo, capture_output=True, check=True,
+        cwd=git_repo,
+        capture_output=True,
+        check=True,
     )
 
     # Write marker config
     ar_dir = git_repo / ".autoresearch"
     ar_dir.mkdir()
     config = {
-        "markers": [{
-            "name": "ruff-fix",
-            "description": "Fix ruff errors",
-            "status": "active",
-            "target": {"mutable": ["*.py"]},
-            "metric": {
-                "command": "ruff check . 2>&1",
-                "extract": "grep -oP 'Found \\K\\d+'",
-                "direction": "lower",
-                "baseline": 10,
-            },
-            "agent": {
-                "model": "stub",
-                "budget_per_experiment": "5m",
-                "max_experiments": 1,
-            },
-        }],
+        "markers": [
+            {
+                "name": "ruff-fix",
+                "description": "Fix ruff errors",
+                "status": "active",
+                "target": {"mutable": ["*.py"]},
+                "metric": {
+                    "command": "ruff check . 2>&1",
+                    "extract": "grep -oP 'Found \\K\\d+'",
+                    "direction": "lower",
+                    "baseline": 10,
+                },
+                "agent": {
+                    "model": "stub",
+                    "budget_per_experiment": "5m",
+                    "max_experiments": 1,
+                },
+            }
+        ],
     }
     (ar_dir / "config.yaml").write_text(yaml.dump(config))
 
@@ -74,14 +78,20 @@ def engine_repo(git_repo):
     agent_dir = ar_dir / "agents" / "default"
     agent_dir.mkdir(parents=True)
     (agent_dir / "CLAUDE.md").write_text("# Test Agent\nFix ruff errors.")
-    (agent_dir / "settings.json").write_text(json.dumps({
-        "permissions": {"allow": ["Read", "Edit", "Write"], "deny": []},
-    }))
+    (agent_dir / "settings.json").write_text(
+        json.dumps(
+            {
+                "permissions": {"allow": ["Read", "Edit", "Write"], "deny": []},
+            }
+        )
+    )
 
     subprocess.run(["git", "add", "."], cwd=git_repo, capture_output=True, check=True)
     subprocess.run(
         ["git", "commit", "-m", "add autoresearch config"],
-        cwd=git_repo, capture_output=True, check=True,
+        cwd=git_repo,
+        capture_output=True,
+        check=True,
     )
     return git_repo
 
@@ -127,7 +137,9 @@ class TestEngineStub:
         """Verify the stub outputs parseable stream-json."""
         result = subprocess.run(
             ["claude", "-p", "test", "--add-dir", str(engine_repo)],
-            capture_output=True, text=True,
+            check=False,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0
         lines = result.stdout.strip().splitlines()
@@ -140,7 +152,9 @@ class TestEngineStub:
         original = (engine_repo / "main.py").read_text()
         subprocess.run(
             ["claude", "-p", "test", "--add-dir", str(engine_repo)],
-            capture_output=True, text=True,
+            check=False,
+            capture_output=True,
+            text=True,
         )
         modified = (engine_repo / "main.py").read_text()
         assert original != modified
