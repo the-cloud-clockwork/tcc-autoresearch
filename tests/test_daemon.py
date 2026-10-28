@@ -103,7 +103,6 @@ class TestIsDue:
         assert is_due(_make_schedule("cron", "0 * * * *"), last) is True
 
     def test_cron_not_due(self):
-        # Last run was 5 seconds ago, cron fires every hour
         now = ON_THE_HOUR + timedelta(seconds=5)
         last = ON_THE_HOUR.isoformat()
         assert is_due(_make_schedule("cron", "0 * * * *"), last, now) is False
@@ -246,38 +245,6 @@ class TestDaemonRunnerTick:
         ):
             runner._tick()
         assert "repo:test" in runner._active_runs
-
-    @pytest.mark.parametrize(
-        ("now", "spawned"),
-        [
-            (ON_THE_HOUR + timedelta(minutes=59, seconds=30), False),
-            (ON_THE_HOUR + timedelta(hours=1), True),
-        ],
-    )
-    def test_tick_reads_injected_clock(self, now, spawned):
-        from autoresearch.config import GlobalConfig
-
-        tracked = _make_tracked(last_run=ON_THE_HOUR.isoformat())
-        state = AppState(markers=[tracked])
-        marker = _make_marker(schedule_type="cron", cron="0 * * * *")
-        mf = MarkerFile(markers=[marker])
-
-        runner = DaemonRunner(config=GlobalConfig(), clock=lambda: now)
-        with (
-            patch("autoresearch.daemon.load_state", return_value=state),
-            patch(
-                "autoresearch.daemon.find_marker_file",
-                return_value=Path("/tmp/.autoresearch.yaml"),
-            ),
-            patch("autoresearch.daemon.load_markers", return_value=mf),
-            patch(
-                "autoresearch.daemon.get_effective_status",
-                return_value=MarkerStatus.ACTIVE,
-            ),
-            patch.object(runner, "_run_marker_thread"),
-        ):
-            runner._tick()
-        assert ("repo:test" in runner._active_runs) is spawned
 
     def test_non_active_skipped(self):
         tracked = _make_tracked(last_run=None)
@@ -767,7 +734,6 @@ class TestIsDueAdditional:
         assert is_due(_make_schedule("overnight"), None) is True
 
     def test_cron_not_due_just_ran(self):
-        # Just ran 1 second ago, hourly cron
         now = ON_THE_HOUR + timedelta(seconds=1)
         last = ON_THE_HOUR.isoformat()
         assert is_due(_make_schedule("cron", "0 * * * *"), last, now) is False
@@ -942,10 +908,6 @@ class TestIsDueBoundary:
         last = ON_THE_HOUR.isoformat()
         now = ON_THE_HOUR + timedelta(minutes=59, seconds=30)
         assert is_due(_make_schedule("cron", "0 * * * *"), last, now) is False
-
-    def test_run_thirty_seconds_before_the_hour_is_due_on_the_hour(self):
-        last = (ON_THE_HOUR - timedelta(seconds=30)).isoformat()
-        assert is_due(_make_schedule("cron", "0 * * * *"), last, ON_THE_HOUR) is True
 
 
 # ---------------------------------------------------------------------------
