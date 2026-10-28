@@ -8,6 +8,7 @@ import signal
 import sys
 import threading
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -124,9 +125,15 @@ def check_stale_pid(pid_path: Path = PID_PATH) -> bool:
 class DaemonRunner:
     """Scheduler loop that polls tracked markers and runs them when due."""
 
-    def __init__(self, config=None, state_path: Path | None = None):
+    def __init__(
+        self,
+        config=None,
+        state_path: Path | None = None,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ):
         self._config = config or load_config()
         self._state_path = state_path
+        self._clock = clock
         self._shutdown = threading.Event()
         self._active_runs: dict[str, threading.Thread] = {}
         self._semaphore = threading.Semaphore(self._config.daemon.max_concurrent)
@@ -149,7 +156,7 @@ class DaemonRunner:
         state = load_state(self._state_path)
         self._reap_threads()
 
-        now = datetime.now(timezone.utc)
+        now = self._clock()
         for tracked in state.markers:
             if tracked.id in self._active_runs:
                 continue
