@@ -1,5 +1,7 @@
 # TODO.md -- Minor Items & Don't Forget
 
+- Verify the release caller on dev mints the org CI App token at the next release.
+
 > **Purpose:** Small items, notes, and things to not forget. Not major blocks — those go in `BLOCKS.md`. This is the scratchpad for details that would otherwise be lost between sessions.
 
 ---

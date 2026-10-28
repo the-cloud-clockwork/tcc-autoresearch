@@ -86,11 +86,11 @@ class TestHeadlessPrompt:
         assert headless_prompt(ctx, "Enter:", default="xyz") == "xyz"
 
     def test_exits_when_no_value_in_headless(self):
-        import click
         ctx = MagicMock(spec=typer.Context)
         ctx.obj = {"headless": True}
-        with pytest.raises(click.exceptions.Exit):
+        with pytest.raises(typer.Exit) as exc:
             headless_prompt(ctx, "Enter:")
+        assert exc.value.exit_code == 2
 
 
 class TestRenderStatus:

@@ -6,7 +6,6 @@ from pathlib import Path
 
 from autoresearch.results import RESULTS_DIR, ensure_results_dir
 
-
 IDEAS_FILE = "ideas.md"
 
 SECTIONS = {

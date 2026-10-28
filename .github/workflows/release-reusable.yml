@@ -1,0 +1,130 @@
+name: Release (Reusable)
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      bump:
+        description: "Version bump type (patch, minor, major)"
+        required: true
+        type: string
+      branch:
+        description: "Branch to release from (dev-first fleet default; main is snapshot-only)"
+        required: false
+        default: "dev"
+        type: string
+      version_file:
+        description: "File containing the version (must have 'version = \"x.y.z\"')"
+        required: false
+        default: "pyproject.toml"
+        type: string
+      downstream_workflows:
+        description: "Comma-separated workflow filenames to dispatch after tagging (empty to skip)"
+        required: false
+        default: "docker-publish.yml,build.yml,publish-pypi.yml"
+        type: string
+    secrets:
+      RELEASE_TOKEN:
+        description: "Deprecated and ignored; the org CI GitHub App token is used instead"
+        required: false
+      TCC_CI_CLIENT_ID:
+        description: "Org CI GitHub App client ID (falls back to GITHUB_TOKEN)"
+        required: false
+      TCC_CI_APP_PRIVATE_KEY:
+        description: "Org CI GitHub App private key"
+        required: false
+
+jobs:
+  release:
+    runs-on: anton
+    environment: release
+    permissions:
+      contents: write
+      actions: write
+    env:
+      HAS_CI_APP: ${{ secrets.TCC_CI_CLIENT_ID != '' && secrets.TCC_CI_APP_PRIVATE_KEY != '' }}
+    steps:
+      - name: Mint org CI App token
+        id: app-token
+        if: env.HAS_CI_APP == 'true'
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          client-id: ${{ secrets.TCC_CI_CLIENT_ID }}
+          private-key: ${{ secrets.TCC_CI_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token || github.token }}
+
+      - name: Compute next version
+        id: version
+        run: |
+          CURRENT=$(python3 - <<'EOF'
+          import tomllib
+          with open("${{ inputs.version_file }}", "rb") as f:
+              print(tomllib.load(f)["project"]["version"])
+          EOF
+          )
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          BUMP="${{ inputs.bump }}"
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEXT="${MAJOR}.${MINOR}.${PATCH}"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version in ${{ inputs.version_file }}
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ steps.version.outputs.next }}"/' "${{ inputs.version_file }}"
+
+      - name: Commit, tag, and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ inputs.version_file }}"
+          git commit -m "chore: release v${{ steps.version.outputs.next }}"
+          git tag "v${{ steps.version.outputs.next }}"
+          git push origin ${{ inputs.branch }}
+          git push origin "v${{ steps.version.outputs.next }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          TAG="v${{ steps.version.outputs.next }}"
+          BUMP="${{ inputs.bump }}"
+          # Mark major/minor as latest; patch releases are not latest so the previous
+          # major/minor stays pinned as "Latest release" in the UI
+          if [[ "$BUMP" == "patch" ]]; then
+            LATEST_FLAG=""
+          else
+            LATEST_FLAG="--latest"
+          fi
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "$TAG" \
+            --generate-notes \
+            $LATEST_FLAG
+
+      - name: Dispatch downstream workflows
+        if: inputs.downstream_workflows != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          TAG="v${{ steps.version.outputs.next }}"
+          IFS=',' read -ra WORKFLOWS <<< "${{ inputs.downstream_workflows }}"
+          for wf in "${WORKFLOWS[@]}"; do
+            wf="${wf// /}"
+            echo "Dispatching $wf at ref $TAG in ${{ github.repository }}"
+            if gh workflow run "$wf" --repo "${{ github.repository }}" --ref "$TAG"; then
+              echo "  -> $wf dispatched"
+            else
+              echo "  WARNING: could not dispatch $wf (may not exist in this repo)"
+            fi
+          done

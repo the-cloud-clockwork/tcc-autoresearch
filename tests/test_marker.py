@@ -6,14 +6,14 @@ import pytest
 from pydantic import ValidationError
 
 from autoresearch.marker import (
-    Guard,
     Escalation,
+    Guard,
     Marker,
     MarkerFile,
     MarkerStatus,
     MetricDirection,
-    Schedule,
     ResultsConfig,
+    Schedule,
     find_marker_file,
     get_marker,
     load_markers,
@@ -106,16 +106,23 @@ class TestResolveMarkerId:
 class TestMarkerDefaults:
     def test_marker_status_default_active(self):
         from autoresearch.marker import Metric, MetricDirection, Target
+
         m = Marker(
             name="test",
             target=Target(mutable=["src/foo.py"]),
-            metric=Metric(command="pytest", extract="grep", direction=MetricDirection.HIGHER, baseline=0),
+            metric=Metric(
+                command="pytest",
+                extract="grep",
+                direction=MetricDirection.HIGHER,
+                baseline=0,
+            ),
         )
         assert m.status == MarkerStatus.ACTIVE
         assert m.description == ""
 
     def test_guard_defaults(self):
         from autoresearch.marker import Guard
+
         g = Guard()
         assert g.command is None
         assert g.threshold is None
@@ -123,6 +130,7 @@ class TestMarkerDefaults:
 
     def test_escalation_defaults(self):
         from autoresearch.marker import Escalation
+
         e = Escalation()
         assert e.refine_after == 3
         assert e.pivot_after == 5
@@ -131,6 +139,7 @@ class TestMarkerDefaults:
 
     def test_agent_config_defaults(self):
         from autoresearch.marker import AgentConfig
+
         ac = AgentConfig()
         assert ac.model == "sonnet"
         assert ac.max_experiments == 50
@@ -145,7 +154,13 @@ class TestMarkerDefaults:
         assert MarkerStatus.COMPLETED == "completed"
 
     def test_find_marker_file_prefers_config_dir(self, tmp_path):
-        from autoresearch.marker import find_marker_file, CONFIG_DIR, CONFIG_FILENAME, MARKER_FILENAME
+        from autoresearch.marker import (
+            CONFIG_DIR,
+            CONFIG_FILENAME,
+            MARKER_FILENAME,
+            find_marker_file,
+        )
+
         # Create both paths
         config_dir = tmp_path / CONFIG_DIR
         config_dir.mkdir()

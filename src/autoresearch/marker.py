@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
+
 import yaml
 from pydantic import BaseModel
-
 
 MARKER_FILENAME = ".autoresearch.yaml"
 CONFIG_DIR = ".autoresearch"
@@ -45,7 +45,6 @@ class Guard(BaseModel):
     extract: str | None = None
     threshold: float | None = None
     rework_attempts: int = 2
-
 
 
 class Escalation(BaseModel):
@@ -109,7 +108,6 @@ class Marker(BaseModel):
     auto_merge: AutoMerge = AutoMerge()
 
 
-
 class MarkerFile(BaseModel):
     markers: list[Marker]
 
@@ -144,6 +142,8 @@ def resolve_marker_id(marker_id: str) -> tuple[str, str]:
     Raises ValueError if format is invalid.
     """
     if ":" not in marker_id:
-        raise ValueError(f"Invalid marker ID '{marker_id}': expected 'repo_name:marker_name'")
+        raise ValueError(
+            f"Invalid marker ID '{marker_id}': expected 'repo_name:marker_name'"
+        )
     parts = marker_id.split(":", 1)
     return parts[0], parts[1]
