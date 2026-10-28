@@ -3173,8 +3173,8 @@ class TestIsDueFurtherVariants:
 
     def test_every_minute_cron_very_recent_not_due(self):
         s = _make_schedule("cron", "* * * * *")
-        recent = datetime.now(timezone.utc).isoformat()
-        assert is_due(s, recent) is False
+        recent = (ON_THE_HOUR + timedelta(seconds=25)).isoformat()
+        assert is_due(s, recent, ON_THE_HOUR + timedelta(seconds=30)) is False
 
     def test_none_cron_type_not_due(self):
         s = _make_schedule("cron", None)
