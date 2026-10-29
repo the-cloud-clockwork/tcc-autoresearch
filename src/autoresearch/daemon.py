@@ -124,8 +124,9 @@ def check_stale_pid(pid_path: Path = PID_PATH) -> bool:
 class DaemonRunner:
     """Scheduler loop that polls tracked markers and runs them when due."""
 
-    def __init__(self, config=None, state_path: Path | None = None):
+    def __init__(self, config=None, state_path: Path | None = None, clock=None):
         self._config = config or load_config()
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._state_path = state_path
         self._shutdown = threading.Event()
         self._active_runs: dict[str, threading.Thread] = {}
@@ -149,7 +150,7 @@ class DaemonRunner:
         state = load_state(self._state_path)
         self._reap_threads()
 
-        now = datetime.now(timezone.utc)
+        now = self._clock()
         for tracked in state.markers:
             if tracked.id in self._active_runs:
                 continue
